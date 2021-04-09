@@ -15,6 +15,9 @@ import DataLoader
 import Processing
 from Processing import DataProcessor
 import datetime
+import kerastuner as kt
+from kerastuner.tuners import Hyperband
+
 
 class DeepSet():
 
@@ -92,7 +95,59 @@ class DeepSet():
     def load_model(self,path,name):
         from tensorflow.keras.models import load_model as tf_load_model
         self.rho = tf_load_model(path+name)
-        
+
+    def model_builder(self,hp):
+        model = builder_rho()
+        hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5])
+
+        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
+                          loss='mean_squared_error',
+                          metrics=['mean_absolute_error'])
+
+        return model
+
+    def phi_builder(self,hp):
+        input_atom = Input(shape = (self.input_dim))
+        x = Dense('units',self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
+        layers = hp.Int(min_value = 1,max_value = 5,step = 1)
+        for layer in range(layers):
+            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
+        phi = Model(inputs = input_atom,outputs = x)
+
+        return phi
+
+    def rho_builder(self,hp):
+
+        phi = phi_builder()
+        inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
+        outputs = [phi(i) for i in inputs]
+
+        y = Add()(outputs)
+        layers = hp.Int('units',min_value = 1,max_value = 5,step = 1)
+        for layer in layers:
+            y = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
+
+
+        output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
+        rho = Model(inputs = inputs,outputs = output)
+
+        return rho
+
+    def get_best_model(self,X,Y,X_val,Y_val):
+
+        tuner = kt.Hyperband(model_builder,
+                     objective='val_mean_absolute_error',
+                     max_epochs=5
+                     )
+        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_mean_squared_error', patience=5)
+
+        tuner.search(X,Y, epochs=5, validation_data=(X_val,Y_val), callbacks=[stop_early])
+
+        model = tuner.get_best_models(num_models=1)
+
+        return model
+
+
     def naive_classificator(self,threshold,X_test,y_test):
 
         limit = threshold
