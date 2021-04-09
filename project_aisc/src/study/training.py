@@ -42,6 +42,10 @@ callbacks = []
 model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks)
 model.evaluate_model(X_test,Y_test)
 model.visual_model_perform()
+path_to_save = '../../models/'
+model.save_model(path_to_save,'model0')
+
+model.evaluate_model(X_test,Y_test)
 
 #display and save the prediction vs the observed value or the critical Temperature
 

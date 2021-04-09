@@ -86,6 +86,13 @@ class DeepSet():
         print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
         print("RMSE: ",np.sqrt(self.rho.evaluate(X_test,y_test,verbose = 0)[0]))
 
+    def save_model(self,path,name):
+        self.rho.save(path+name)
+
+    def load_model(self,path,name):
+        from tensorflow.keras.models import load_model as tf_load_model
+        self.rho = tf_load_model(path+name)
+        
     def naive_classificator(self,threshold,X_test,y_test):
 
         limit = threshold
