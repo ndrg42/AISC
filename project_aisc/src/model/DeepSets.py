@@ -21,7 +21,7 @@ from kerastuner.tuners import Hyperband
 
 class DeepSet():
 
-    def __init__(self,DataProcessor,latent_dim):
+    def __init__(self,DataProcessor,latent_dim,freeze_latent_dim_on_tuner = False):
 
 
         self.latent_dim = latent_dim
@@ -33,6 +33,7 @@ class DeepSet():
         self.rho = None
         self.history = None
         self.history_classification = None
+        self.freeze_latent_dim_on_tuner = freeze_latent_dim_on_tuner
 
 
     def build_phi(self):
@@ -85,6 +86,7 @@ class DeepSet():
         self.history = self.rho.fit(x = X,y = y,epochs =epochs, batch_size = batch_size,shuffle = True ,validation_data =(X_val,y_val),callbacks = callbacks )
 
     def evaluate_model(self,X_test,y_test):
+
         R2=1-np.square((y_test-np.reshape(self.rho.predict(X_test),y_test.shape))).sum()/np.square((y_test - y_test.mean())).sum()
 
         print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
@@ -94,10 +96,12 @@ class DeepSet():
         self.rho.save(path+name)
 
     def load_model(self,path,name):
+
         from tensorflow.keras.models import load_model as tf_load_model
         self.rho = tf_load_model(path+name)
 
     def model_builder(self,hp):
+
         model = self.rho_builder(hp)
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5])
 
@@ -108,11 +112,17 @@ class DeepSet():
         return model
 
     def phi_builder(self,hp):
+
         input_atom = Input(shape = (self.input_dim))
         x = Dense(self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
         layers = hp.Int('layers_1',min_value = 1,max_value = 5,step = 1)
+
         for layer in range(layers):
             x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
+
+        if self.freeze_latent_dim_on_tuner:
+            x = Dense(self.latent_dim,activation='relu')(x)
+
         phi = Model(inputs = input_atom,outputs = x)
 
         return phi,layers
