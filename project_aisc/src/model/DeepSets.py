@@ -136,11 +136,15 @@ class DeepSet():
     def get_best_model(self,X,Y,X_val,Y_val,max_epochs=5,epochs=5,num_best_model=1):
 
         import datetime
+        import os
 
         date = datetime.datetime.now()
 
         directory = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
-        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")
+
+        DIR = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
+        n_best_model_per_day =len([name for name in os.listdir(DIR)])
+        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")+str(n_best_model_per_day)
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
