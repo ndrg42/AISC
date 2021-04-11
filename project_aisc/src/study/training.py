@@ -34,8 +34,7 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
 model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
 
-# m = model.get_best_model(X=X,Y=Y,X_val = X_val,Y_val =Y_val)
-#m = model.rho_builder()
+
 model.build_model()
 model.phi.summary()
 model.rho.summary()
@@ -46,12 +45,13 @@ model.evaluate_model(X_test,Y_test)
 model.visual_model_perform()
 path_to_save = '../../models/'
 model.save_model(path_to_save,'model0')
+model.load_best_model(directory = '../../models/best_model_11-04/',project_name ='model_11-04-3')
 
 model.evaluate_model(X_test,Y_test)
 
 #display and save the prediction vs the observed value or the critical Temperature
 
-observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(m.predict(X_test)).reshape(Y_test.shape[0],)})
+observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
 
 sns_plot = sns.scatterplot(x = observed_vs_predicted['Oberved Critical Temperature (K)'],y= observed_vs_predicted['Predicted Critical Temperature (K)']).get_figure()
 
@@ -59,9 +59,8 @@ sns_plot.savefig("training_img/pred_vs_ob.png")
 
 #%%
 #Create and save the mono dimensional rapresentations of the molecules
-mono_rapp = m.predict(list(atom_data.dataset))
-mono_rapp = models[0].layers[10](list(atom_data.dataset))
-mono_temp = m.predict(list(atom_data.dataset))
+mono_rapp = model.rho.predict(list(atom_data.dataset))
+mono_temp = model.rho.predict(list(atom_data.dataset))
 mono_temp.shape
 mono_rapp.shape
 
@@ -133,112 +132,5 @@ def plot_fig(x,y,color='ro',save = False,path= None,name = None,xlabel=None,ylab
     plt.ylabel(ylabel)
     if save:
         plt.savefig(path+name)
-    plt.xlim([0.25,1.5])
+    # plt.xlim([0.4,1])
     plt.show()
-#%%
-
-def model_builder(hp):
-        model = builder_rho()
-        hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5])
-
-        model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                          loss='mean_squared_error',
-                          metrics=['mean_absolute_error'])
-
-        return model
-
-
-
-def rho_builder(hp):
-
-    phi = phi_builder(hp)
-    inputs= [Input(33) for i in range(10)]
-    outputs = [phi(i) for i in inputs]
-
-    y = Add()(outputs)
-    layers = hp.Int('units_11',min_value = 1,max_value = 5,step = 1)
-    for layer in range(layers):
-        y = Dense(hp.Int('units_'+str(11+layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
-
-
-    output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
-    rho = Model(inputs = inputs,outputs = output)
-
-    hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
-
-    rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                      loss='mean_squared_error',
-                      metrics=['mean_absolute_error'])
-
-    return rho
-
-# def get_best_model(X,Y,X_val,Y_val):
-#
-#     tuner = kt.Hyperband(rho_builder,
-#                  objective='val_accuracy',
-#                  max_epochs=5
-#                  )
-#     stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
-#
-#     tuner.search(X,Y, epochs=5, validation_data=(X_val,Y_val), callbacks=[stop_early])
-#
-#     model = tuner.get_best_models(num_models=1)
-#
-#     return model
-
-import kerastuner as kt
-from kerastuner.tuners import Hyperband
-
-model = get_best_model(X,Y,X_val,Y_val)
-from tensorflow.keras.layers import Dense,Input,Add
-from tensorflow.keras.models import Model
-import tensorflow as tf
-tuner = kt.Hyperband(rho_builder,
-                 objective='val_mean_absolute_error',
-                 max_epochs=10
-                 )
-
-def phi_builder(hp):
-    input_atom = Input(shape = (33))
-    x = Dense(33,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
-    layers = hp.Int('units',min_value = 1,max_value = 10,step = 1)
-    for layer in range(layers):
-        x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
-
-    y = Dense(1,activation='linear')(x)
-    phi = Model(inputs = input_atom,outputs = y)
-
-    return phi
-
-hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
-
-phi.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                      loss='mean_squared_error',
-                      metrics=['mean_absolute_error'])
-
-
-
-tuner.search(X, Y,
-             epochs=10,
-             validation_data=(X_val, Y_val))
-
-models = tuner.get_best_models(num_models=2)
-models[0].summary()
-np.sqrt(models[1].evaluate(X_test,Y_test)[0])
-path_to_save = '../../models/'
-models[0].save(path_to_save,'model_best_0')
-models[0].summary()
-models[0].layers[10](X_test)
-m = tf.keras.models.load_model(path_to_save)
-
-np.sqrt(m.evaluate(X_test,Y_test,verbose=0)[0])
-m.summary()
-m.functional_1.summary()
-rmse = []
-for i in range(10):
-    X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
-    X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
-    rmse.append(np.sqrt(m.evaluate(X_test,Y_test,verbose=0)[0]))
-
-np.array(rmse).mean()
-np.array(rmse).std()
