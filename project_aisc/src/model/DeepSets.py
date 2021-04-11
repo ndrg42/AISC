@@ -97,7 +97,7 @@ class DeepSet():
         self.rho = tf_load_model(path+name)
 
     def model_builder(self,hp):
-        model = builder_rho()
+        model = self.rho_builder(hp)
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5])
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
@@ -108,8 +108,8 @@ class DeepSet():
 
     def phi_builder(self,hp):
         input_atom = Input(shape = (self.input_dim))
-        x = Dense('units',self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
-        layers = hp.Int(min_value = 1,max_value = 5,step = 1)
+        x = Dense(self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
+        layers = hp.Int('layers_1',min_value = 1,max_value = 5,step = 1)
         for layer in range(layers):
             x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
         phi = Model(inputs = input_atom,outputs = x)
@@ -118,13 +118,13 @@ class DeepSet():
 
     def rho_builder(self,hp):
 
-        phi = phi_builder()
+        phi = self.phi_builder(hp)
         inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
         outputs = [phi(i) for i in inputs]
 
         y = Add()(outputs)
-        layers = hp.Int('units',min_value = 1,max_value = 5,step = 1)
-        for layer in layers:
+        layers = hp.Int('layers_2',min_value = 1,max_value = 5,step = 1)
+        for layer in range(layers):
             y = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
 
 
@@ -133,17 +133,29 @@ class DeepSet():
 
         return rho
 
-    def get_best_model(self,X,Y,X_val,Y_val):
+    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=5,epochs=5,num_best_model=1):
 
-        tuner = kt.Hyperband(model_builder,
-                     objective='val_mean_absolute_error',
-                     max_epochs=5
+        import datetime
+
+        date = datetime.datetime.now()
+
+        directory = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
+        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")
+
+        tuner = kt.Hyperband(self.model_builder,
+                     objective='val_loss',
+                     max_epochs=max_epochs,
+                     directory=directory,
+                     project_name=project_name
                      )
-        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_mean_squared_error', patience=5)
 
-        tuner.search(X,Y, epochs=5, validation_data=(X_val,Y_val), callbacks=[stop_early])
+        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
 
-        model = tuner.get_best_models(num_models=1)
+        tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
+
+        model = tuner.get_best_models(num_models=num_best_model)
+
+        self.rho = model[0]
 
         return model
 
