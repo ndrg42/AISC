@@ -35,3 +35,7 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
 
 model.get_best_model(X,Y,X_val,Y_val)
+
+model.load_best_model(directory ='../../models/best_model_11-04/',project_name= 'model_11-04-3')
+
+model.evaluate_model(X_test,Y_test)
