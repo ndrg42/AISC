@@ -114,18 +114,18 @@ class DeepSet():
             x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
         phi = Model(inputs = input_atom,outputs = x)
 
-        return phi
+        return phi,layers
 
     def rho_builder(self,hp):
 
-        phi = self.phi_builder(hp)
+        phi,n_layers_phi = self.phi_builder(hp)
         inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
         outputs = [phi(i) for i in inputs]
 
         y = Add()(outputs)
         layers = hp.Int('layers_2',min_value = 1,max_value = 5,step = 1)
         for layer in range(layers):
-            y = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
+            y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
 
 
         output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
@@ -144,7 +144,7 @@ class DeepSet():
 
         DIR = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
         n_best_model_per_day =len([name for name in os.listdir(DIR)])
-        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")+str(n_best_model_per_day)
+        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
@@ -162,6 +162,41 @@ class DeepSet():
         self.rho = model[0]
 
         return model
+
+    def load_best_model(self,directory,project_name,max_epochs=5,more_models = False,num_models = 1):
+
+        tuner = kt.Hyperband(self.model_builder,
+                     objective='val_loss',
+                     max_epochs=max_epochs,
+                     directory=directory,
+                     project_name=project_name
+                     )
+
+        tuner.reload()
+
+        if more_models:
+            return tuner.get_best_models(num_models=num_models)
+            del tuner
+        else:
+            self.rho = tuner.get_best_models(num_models=1)[0]
+            del tuner
+
+    def load_best_architecture(self,directory,project_name,max_epochs=5):
+
+        tuner = kt.Hyperband(self.model_builder,
+                     objective='val_loss',
+                     max_epochs=max_epochs,
+                     directory=directory,
+                     project_name=project_name
+                     )
+
+        tuner.reload()
+
+        best_hps = tuner.get_best_hyperparameters(num_trials=1)[0]
+        self.rho = tuner.hypermodel.build(best_hps)
+
+        del tuner
+
 
 
     def naive_classificator(self,threshold,X_test,y_test):
