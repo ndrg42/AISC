@@ -52,6 +52,7 @@ class DeepSet():
         self.phi = Model(inputs = input_atom,outputs = y)
 
 
+
     def build_rho(self):
 
         inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
@@ -213,33 +214,43 @@ class DeepSet():
     def naive_classificator(self,threshold,X_test,y_test):
 
         limit = threshold
-        good=0
-        bad=0
-        j=0
-        X_test_pred = []
+
+        #true_positive: valore maggiore del threshold
+        true_positive = 0
+        #true_negative: valore minore del threshold
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+
+        val = self.rho.predict(X_test)
+
         for i in range(X_test[0].shape[0]):
-            X_test_pred = []
-            for k in range(0,len(X_test)):
-                d = X_test[k][i][:]
-                d = np.expand_dims(d,axis = 1)
-                d=np.moveaxis(d,0,1)
-                X_test_pred.append(d)
 
-
-            val = self.rho.predict(X_test_pred)
             if y_test[i] > limit:
-                if val > limit:
-                    good +=1
-                if val < limit:
-                    bad +=1
 
-            if y_test[i] < limit:
-                if val < limit:
-                    good +=1
-                if val > limit:
-                    bad +=1
+                if val[i] > limit:
+                    true_positive +=1
+                if val[i] <= limit:
+                    false_negative +=1
 
-        print(good/X_test[0].shape[0])
+            if y_test[i] <= limit:
+
+                if val[i] > limit:
+                    false_positive +=1
+
+                if val[i] <= limit:
+                    true_negative +=1
+
+        Accuracy = (true_positive+true_negative)/(true_positive+true_negative+false_negative+false_positive)
+        Precision = (true_positive)/(true_positive+false_positive)
+        Recall = (true_positive)/(true_positive+false_negative)
+        F1 = 2*(Recall*Precision)/(Recall + Precision)
+
+        print("Accuracy: {} \nPrecision: {} \nRecall: {} \nF1:{}".format(Accuracy,Precision,Recall,F1))
+
+        return true_positive,true_negative,false_positive,false_negative
+
+
 
 
     def visual_model_perform(self):
