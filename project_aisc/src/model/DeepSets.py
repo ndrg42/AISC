@@ -251,6 +251,24 @@ class DeepSet():
         return true_positive,true_negative,false_positive,false_negative
 
 
+    def confusion_matrix(self,X_test,Y_test):
+
+        data = {}
+        data['observed'] = list(Y_test>10)
+        data['predicted'] = list(np.reshape((self.rho.predict(X_test) > 10),(Y_test.shape[0])))
+
+        data = pd.DataFrame(data).replace(False,0)
+
+
+        import sklearn
+        cm = sklearn.metrics.confusion_matrix(data['observed'],data['predicted'])
+        disp = sklearn.metrics.ConfusionMatrixDisplay(confusion_matrix=cm,
+                                       display_labels=['non sc','sc'])
+
+        disp.plot()
+
+
+
 
 
     def visual_model_perform(self):
