@@ -3,9 +3,9 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 #Confront the element of the groups of the different rapresentation
+DataA = pd.read_csv('mono_dim_data/mono_dim/mono_dim_rapp1.csv',index_col=0)
 
-DataA = pd.read_csv('src/study/mono_dim_data/mono_dim/mono_dim_rapp1.csv',index_col=0)
-DataB = pd.read_csv('src/study/mono_dim_data/mono_dim/mono_dim_rapp2.csv',index_col=0)
+DataB = pd.read_csv('mono_dim_data/mono_dim/mono_dim_rapp2.csv',index_col=0)
 
 #plot the rappresentation with the temperature to individuate the x range and the temperature
 def plot_img(x,y):
@@ -52,7 +52,7 @@ def find_group(Data,inf,sup,temp):
 
 #%%
 import numpy as np
-X = np.vstack([DataB.x,DataB.temp_oss])
+X = np.vstack([DataA.x,DataA.temp_oss])
 X = np.moveaxis(X,0,1)
 plot_img(X[:,0],X[:,1])
 import seaborn as sns
@@ -65,7 +65,7 @@ model.fit(X)
 y_t = model.predict(X)
 from matplotlib import pyplot
 
-sns.scatterplot(X[:,0],X[:,1],hue=y_t[:])
+sns.scatterplot(X[:,0],X[:,1],hue=explore_element_presence('Ca'))
 
 
 Y = []
@@ -192,3 +192,22 @@ def kmean_display(i):
 
 
 kmean_display(0)
+#%%
+import sys
+sys.path.append('../../src/data')
+sys.path.append('../../src/features')
+sys.path.append('../../src/model')
+import DataLoader
+import Processing
+#ptable = DataLoader.PeriodicTable()
+sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/unique_m.csv')
+
+sc_dataframe.drop(['critical_temp', 'material'],axis = 1,inplace= True)
+sc_dataframe
+
+sc_dataframe.astype(bool).replace(False,0).sum(axis = 1).describe
+()
+sc_dataframe.astype(bool).sum(axis=0).sort_values(ascending=False)
+element = 'O'
+def explore_element_presence(element):
+    return np.array(sc_dataframe[element].astype(bool).replace(False,0))
