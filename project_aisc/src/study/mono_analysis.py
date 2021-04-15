@@ -1,6 +1,9 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import pyplot
+import seaborn as sns
+from sklearn.cluster import KMeans
 
 #Confront the element of the groups of the different rapresentation
 DataA = pd.read_csv('mono_dim_data/mono_dim/mono_dim_rapp1.csv',index_col=0)
@@ -147,6 +150,97 @@ axs[1].plot(DataB.x,DataB.temp_pred,'ro')
 mono_data_list = []
 for i in range(10):
     mono_data_list.append(pd.read_csv('/home/claudio/aisc/project_aisc/src/study/mono_dim_data/mono_dim_10/'+'mono_dim_rapp_'+str(i)+'.csv',index_col=0))
+#%%
+#Script to compare different group from different rappresentation
+
+different_set,score,mean,std = compare_1d_data(mono_data_list)
+
+mean
+std
+different_set
+
+Z =[]
+for j in different_set['B0']:
+    Z.append(X[j])
+
+Z = np.array(Z)
+plot_img(Z[:,0],Z[:,1])
+
+#%%
+def compare_1d_data(mono_data_list):
+
+    from sklearn.cluster import KMeans
+    from matplotlib import pyplot
+    import seaborn as sns
+    n_groups = 10
+    different_set= {}
+    for group in range(n_groups):
+
+        X = np.vstack([mono_data_list[group].x,mono_data_list[group].temp_oss])
+        X = np.moveaxis(X,0,1)
+
+        model_t = KMeans(n_clusters=2)
+
+        model_t.fit(X)
+
+        label_t = model_t.predict(X)
+
+
+        for j in range(X.shape[0]):
+            if X[j][1] > 100:
+                if label_t[j] != 1:
+                    label_t -= 1
+                    label_t = (-1)*label_t
+
+        Y = []
+        for i in range(X.shape[0]):
+            if label_t[i] ==1:
+                Y.append([X[i,0],X[i,1]])
+
+        Y = np.array(Y)
+
+
+        model_x = KMeans(n_clusters=2,max_iter=1000)
+
+        model_x.fit(Y[:,0].reshape(-1, 1))
+
+        label_x = model_x.predict(Y[:,0].reshape(-1, 1))
+
+        if label_x.mean() < 0.5:
+            label_x -= 1
+            label_x = (-1)*label_x
+
+
+        A = []
+        B = []
+        for i in range(Y.shape[0]):
+            if label_x[i] ==1:
+                A.append(i)
+            else:
+                B.append(i)
+
+
+        A = set(A)
+        B = set(B)
+
+        different_set['A'+str(group)]= A
+        different_set['B'+str(group)]= B
+
+    mean = []
+    std = []
+
+    for group in ['B','A']:
+        score = {}
+        for i in range(n_groups):
+            for k in range(1+i,n_groups):
+                score[group+str(i)+' su '+group+str(k)] = len(different_set[group+str(i)].intersection(different_set[group+str(k)]))/len(different_set[group+str(i)])
+                score[group+str(k)+' su '+group+str(i)] = len(different_set[group+str(i)].intersection(different_set[group+str(k)]))/len(different_set[group+str(k)])
+
+
+        mean.append(np.array(list(score.values())).mean())
+        std.append(np.array(list(score.values())).std())
+
+    return different_set,score,mean,std
 
 #%%
 #mono_data_list[0].x
@@ -158,25 +252,49 @@ for i in range(2):
     for j in range(5):
         axs[i,j].plot(mono_data_list[i+j].x,mono_data_list[i+j].temp_pred,'ro')
 #%%
-def kmean_display(i):
+def kmean_display_t(i):
+
+    from matplotlib import pyplot
+    import seaborn as sns
     X = np.vstack([mono_data_list[i].x,mono_data_list[i].temp_pred])
     X = np.moveaxis(X,0,1)
 
-    from sklearn.cluster import KMeans
     model = KMeans(n_clusters=2)
 
     model.fit(X)
 
     y_t = model.predict(X)
-    from matplotlib import pyplot
-    import seaborn as sns
     sns.scatterplot(X[:,0],X[:,1],hue=y_t[:])
 
-    Y = []
 
+def kmean_display_x(i,label=False,y_x = None):
+
+
+    X = np.vstack([mono_data_list[i].x,mono_data_list[i].temp_pred])
+    X = np.moveaxis(X,0,1)
+
+    model = KMeans(n_clusters=2)
+
+    model.fit(X)
+
+    y_t = model.predict(X)
+
+    for j in range(X.shape[0]):
+            if X[j][1] > 100:
+                if y_t[j] != 1:
+                    y_t -= 1
+                    y_t = (-1)*y_t
+
+
+
+    Y = []
+    hue_values = []
     for i in range(X.shape[0]):
         if y_t[i] ==1:
             Y.append([X[i,0],X[i,1]])
+            if label:
+                hue_values.append(y_x[i])
+
 
 
 
@@ -187,11 +305,16 @@ def kmean_display(i):
 
     model.fit(Y[:,0].reshape(-1, 1))
 
-    yhat = model.predict(Y[:,0].reshape(-1, 1))
-    #sns.scatterplot(Y[:,0],Y[:,1],hue=yhat[:])
+    if not label:
+        y_x = model.predict(Y[:,0].reshape(-1, 1))
+    else:
+        y_x = np.array(hue_values)
+
+    sns.scatterplot(Y[:,0],Y[:,1],hue=y_x[:])
 
 
-kmean_display(0)
+kmean_display_x(0,label = True,y_x =explore_element_presence('Cu'))
+kmean_display_x(9)
 #%%
 import sys
 sys.path.append('../../src/data')
