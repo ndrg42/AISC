@@ -1,7 +1,7 @@
 import sys
-sys.path.append('../data')
-sys.path.append('../features')
-sys.path.append('../model')
+sys.path.append('../../src/data')
+sys.path.append('../../src/features')
+sys.path.append('../../src/model')
 import DataLoader
 import Processing
 from Processing import DataProcessor
@@ -12,10 +12,11 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+
 #%%
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
-sc_dataframe = DataLoader.SuperCon(sc_path = '../../data/raw/unique_m.csv')
+sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/unique_m.csv')
 
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
 
@@ -33,6 +34,8 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 #Build and train the deep set model
 
 model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
+# import importlib
+# importlib.reload(DeepSets)
 
 
 model.build_model()
@@ -46,8 +49,11 @@ model.visual_model_perform()
 path_to_save = '../../models/'
 model.save_model(path_to_save,'model0')
 model.load_best_model(directory = '../../models/best_model_11-04/',project_name ='model_11-04-3')
+model.load_model(path='../../models',name='/')
+model.load_best_architecture(directory = '../../models/best_model_11-04/',project_name ='model_11-04-3')
+model.rho.layers[10].predict(X_test)
+model.rho.layers[10].summary()
 
-model.evaluate_model(X_test,Y_test)
 
 #display and save the prediction vs the observed value or the critical Temperature
 
@@ -56,15 +62,32 @@ observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,
 sns_plot = sns.scatterplot(x = observed_vs_predicted['Oberved Critical Temperature (K)'],y= observed_vs_predicted['Predicted Critical Temperature (K)']).get_figure()
 
 sns_plot.savefig("training_img/pred_vs_ob.png")
+#%%
+for i in range(10):
+    X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+    X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
+
+    model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
+    model.build_model()
+    callbacks = []
+    model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks)
+
+    mono_rapp = model.phi.predict(list(atom_data.dataset))
+    mono_temp = model.rho.predict(list(atom_data.dataset))
+
+    mono_dataset = pd.DataFrame.from_dict({'x':np.reshape(mono_rapp,(mono_rapp.shape[0])),'temp_pred':np.reshape(mono_temp,(mono_rapp.shape[0])),'temp_oss': atom_data.t_c})
+    mono_dataset.to_csv('mono_dim_data/mono_dim_10/mono_dim_rapp_'+str(i)+'.csv')
+
 
 #%%
 #Create and save the mono dimensional rapresentations of the molecules
-mono_rapp = model.rho.predict(list(atom_data.dataset))
+mono_rapp = model.phi.predict(list(atom_data.dataset))
+mono_rapp = model.rho.layers[10].predict(list(atom_data.dataset))
 mono_temp = model.rho.predict(list(atom_data.dataset))
 mono_temp.shape
 mono_rapp.shape
-
-mono_dataset = pd.DataFrame.from_dict({'x':np.reshape(mono_rapp,(mono_rapp.shape[0])),'temp_pred':np.reshape(mono_temp,(mono_rapp.shape[0])),'temp_oss': atom_data.t_c})
+#changed t_pred con mono_rapp
+mono_dataset = pd.DataFrame.from_dict({'x':np.reshape(mono_rapp[:,1],(mono_rapp.shape[0])),'temp_pred':np.reshape(mono_rapp[:,3],(mono_rapp.shape[0])),'temp_oss': atom_data.t_c})
 mono_dataset.to_csv('mono_dim_data/mono_dim_rapp.csv')
 mono_dataset = pd.read_csv('mono_dim_data/mono_dim_rapp.csv',index_col=0)
 mono_dataset.head()
@@ -75,7 +98,7 @@ plot_fig(mono_dataset.x,mono_dataset.temp_oss,color='ro',xlabel = 'x',ylabel='Ob
 
 #%%
 #Plot the learned feature of the molecules vs the Pred Temperature
-plot_fig(mono_dataset.x,mono_dataset.temp_pred,color='bo',xlabel = 'x',ylabel='Observed Temperature(K)',save = False)
+plot_fig(mono_dataset.x,mono_dataset.temp_pred,color='bo',xlabel = 'x',ylabel='Observed Temperature(K)',save =False)#True,path ='../../notebooks/',name='best_model_x1_vsx3.png')
 
 #%%
 #Plot the Histogram of the molecules' feature
