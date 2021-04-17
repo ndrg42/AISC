@@ -104,7 +104,7 @@ class DeepSet():
     def model_builder(self,hp):
 
         model = self.rho_builder(hp)
-        hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5])
+        hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
                           loss='mean_squared_error',
@@ -116,10 +116,10 @@ class DeepSet():
 
         input_atom = Input(shape = (self.input_dim))
         x = Dense(self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
-        layers = hp.Int('layers_1',min_value = 1,max_value = 5,step = 1)
+        layers = hp.Int('layers_1',min_value = 1,max_value = 20,step = 1)
 
         for layer in range(layers):
-            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 400,step = 32),activation='relu')(x)
+            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 500,step = 32),activation='relu')(x)
 
         if self.freeze_latent_dim_on_tuner:
             x = Dense(self.latent_dim,activation='relu')(x)
@@ -135,9 +135,9 @@ class DeepSet():
         outputs = [phi(i) for i in inputs]
 
         y = Add()(outputs)
-        layers = hp.Int('layers_2',min_value = 1,max_value = 5,step = 1)
+        layers = hp.Int('layers_2',min_value = 1,max_value = 20,step = 1)
         for layer in range(layers):
-            y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 400,step = 32),activation='relu')(y)
+            y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 500,step = 32),activation='relu')(y)
 
 
         output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
@@ -145,7 +145,7 @@ class DeepSet():
 
         return rho
 
-    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=5,epochs=5,num_best_model=1):
+    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=50,epochs=100,num_best_model=1):
 
         import datetime
         import os
@@ -155,7 +155,13 @@ class DeepSet():
         directory = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
 
         DIR = '../../models/best_model_'+date.strftime("%d")+"-"+date.strftime("%m")
-        n_best_model_per_day =len([name for name in os.listdir(DIR)])
+
+        try:
+            n_best_model_per_day =len([name for name in os.listdir(DIR)])
+        except:
+            os.makedirs(DIR)
+            n_best_model_per_day = 0
+
         project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
 
         tuner = kt.Hyperband(self.model_builder,
@@ -165,7 +171,7 @@ class DeepSet():
                      project_name=project_name
                      )
 
-        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=5)
+        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
 
         tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
 
@@ -175,7 +181,7 @@ class DeepSet():
 
         return model
 
-    def load_best_model(self,directory,project_name,max_epochs=5,more_models = False,num_models = 1):
+    def load_best_model(self,directory,project_name,max_epochs=50,more_models = False,num_models = 1):
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
