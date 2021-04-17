@@ -19,7 +19,7 @@ sc_dataframe = DataLoader.SuperCon(sc_path = '../../data/raw/unique_m.csv')
 
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
 
-
+np.array(atom_data.dataset).shape
 path = '../../data/processed/'
 atom_data.load_data_processed(path + 'dataset_elaborated.csv')
 atom_data.load_data_processed(path + 'dataset_label_elaborated.csv')
@@ -32,13 +32,13 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 #%%
 #Build and train the deep set model
 import importlib
-importlib.reload(DeepSets)
+importlib.reload(Processing)
 from DeepSets import DeepSet
 model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
 
 model.get_best_model(X,Y,X_val,Y_val)
 
-model.load_best_model(directory ='../../models/best_model_11-04/',project_name= 'model_11-04-3')
+model.load_best_model(directory ='../../models/best_model_16-04/',project_name= 'model_16-04-0')
 
 model.evaluate_model(X_test,Y_test)
 true_positive,true_negative,false_positive,false_negative = model.naive_classificator(70,X_test,Y_test)
@@ -92,3 +92,25 @@ importlib.reload(DataLoader)
 atom_data.build_Atom()
 atom_data.Atom
 gx0x1(list(atom_data.dataset))[0][:,]
+
+corr_score = {}
+for index in range(model.input_dim):
+    for k in range(10):
+        gx0x1 = np.array(atom_data.dataset)[k,:,index]
+
+        xy = mono_temp*np.reshape(gx0x1,mono_temp.shape)
+
+        x_med = np.reshape(gx0x1,mono_temp.shape).mean()
+        y_med = mono_temp.mean()
+        try:
+            corr_score['G(x'+str(index)+',t_c)'] += xy.mean()-  x_med*y_med
+        except:
+            corr_score['G(x'+str(index)+',t_c)'] = 0
+            corr_score['G(x'+str(index)+',t_c)'] += xy.mean()-  x_med*y_med
+
+len(corr_score.keys())
+len(atom_data.Atom.columns)
+x0 = list(atom_data.Atom.columns)
+x0.append('%')
+dict(zip(x0,list(corr_score.values())))
+corr_score
