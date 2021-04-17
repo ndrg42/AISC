@@ -41,5 +41,54 @@ model.get_best_model(X,Y,X_val,Y_val)
 model.load_best_model(directory ='../../models/best_model_11-04/',project_name= 'model_11-04-3')
 
 model.evaluate_model(X_test,Y_test)
-true_positive,true_negative,false_positive,false_negative = model.naive_classificator(10,X_test,Y_test)
+true_positive,true_negative,false_positive,false_negative = model.naive_classificator(70,X_test,Y_test)
 model.confusion_matrix(X_test,Y_test)
+
+model.rho.layers[10].predict()
+
+
+mono_rapp = model.rho.layers[10].predict(list(atom_data.dataset))
+mono_temp = model.rho.predict(list(atom_data.dataset))
+mono_dataset = pd.DataFrame.from_dict({'x':np.reshape(mono_rapp[:,319],(mono_rapp.shape[0])),'temp_pred':np.reshape(mono_rapp[:,317],(mono_rapp.shape[0])),'temp_oss': atom_data.t_c})
+plot_fig(mono_dataset.x,mono_dataset.temp_pred,color='ro',xlabel = 'x',ylabel='Observed Temperature(K)',save = False)
+#%%
+def plot_fig(x,y,color='ro',save = False,path= None,name = None,xlabel=None,ylabel = None):
+    plt.plot(x,y,color)
+    plt.xlabel(xlabel)
+    plt.ylabel(ylabel)
+    if save:
+        plt.savefig(path+name)
+    # plt.xlim([0.4,1])
+    plt.show()
+#%%
+#implement correlation function to estimate feature importance
+
+model.rho.layers[10].summary()
+
+from tensorflow.keras import backend as K
+
+gx0x1 = K.function([model.rho.layers[10].layers[0].input],[model.rho.layers[10].layers[0].output])
+gx0x1(list(atom_data.dataset))[0][:,0].shape
+xy = mono_temp*np.reshape(gx0x1(list(atom_data.dataset))[0][:,2],mono_temp.shape)
+xy.mean()-  x_med*y_med
+x_med = np.reshape(gx0x1(list(atom_data.dataset))[0][:,0],mono_temp.shape).mean()
+y_med = mono_temp.mean()
+model.input_dim
+corr_score = {}
+for index in range(model.input_dim):
+
+    gx0x1 = K.function([model.rho.layers[10].layers[0].input],[model.rho.layers[10].layers[0].output])
+
+    xy = mono_temp*np.reshape(gx0x1(list(atom_data.dataset))[0][:,index],mono_temp.shape)
+
+    x_med = np.reshape(gx0x1(list(atom_data.dataset))[0][:,0],mono_temp.shape).mean()
+    y_med = mono_temp.mean()
+    corr_score['G(x'+str(index)+',t_c)'] = xy.mean()-  x_med*y_med
+
+
+corr_score
+import importlib
+importlib.reload(DataLoader)
+atom_data.build_Atom()
+atom_data.Atom
+gx0x1(list(atom_data.dataset))[0][:,]
