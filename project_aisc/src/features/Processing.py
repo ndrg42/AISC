@@ -62,7 +62,7 @@ class DataProcessor():
         except:
             pass
 
-        for j in range(10):
+        for j in range(self.max_lunghezza):
             if j < len(d):
                 entrata.append(np.array(self.Atom.loc[(element(list(d.keys())[j]).atomic_number -1)].append(pd.Series(list(d.values())[j]))))
             else:
