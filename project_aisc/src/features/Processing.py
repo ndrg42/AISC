@@ -75,6 +75,32 @@ class DataProcessor():
 
 
 
+    def input_from_dict(self,d_m):
+        from mendeleev import element
+
+        input_dim = 33
+
+        try:
+            if self.Atom == None:
+                super().build_Atom()
+        except:
+            pass
+
+        nulla = np.zeros(input_dim)
+        entrata = []
+        for j in range(self.max_lunghezza):
+            if j < len(d_m):
+                entrata.append(np.array(self.Atom.loc[(element(list(d_m.keys())[j]).atomic_number -1)].append(pd.Series(list(d_m.values())[j]))))
+            else:
+                entrata.append(np.array(pd.Series(nulla)))
+
+        e = np.array(entrata)
+        e = list(np.expand_dims(e,axis = 1))
+
+        return e
+
+
+
     def build_Atom(self):
         """
         dataset contenente i dati della tavola periodica processati, ovvero normalizzati ed Imputation
