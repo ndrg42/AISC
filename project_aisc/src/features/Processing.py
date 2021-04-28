@@ -26,6 +26,53 @@ class DataProcessor():
         self.max_lunghezza = 10
         self.analitic_dataset = None
 
+    def get_input(self,compound):
+        from mendeleev import element
+
+        num = ['0','1','2','3','4','5','6','7','8','9','.']
+        key=''
+        d= {}
+        value = ''
+        ok = False
+        compound = compound
+        for s in compound:
+            if s not in num:
+                if ok == True:
+                    d.update({key:float(value)})
+                    key = ''
+                    value = ''
+                    ok = False
+
+                key = key+s
+            if s in num:
+                value = value +s
+                ok = True
+        if ok == False:
+            d.update({key:1.0})
+        if ok == True:
+            d.update({key:float(value)})
+
+        input_dim = 33
+        nulla = np.zeros(input_dim)
+        entrata = []
+
+        try:
+            if self.Atom == None:
+                super().build_Atom()
+        except:
+            pass
+
+        for j in range(10):
+            if j < len(d):
+                entrata.append(np.array(self.Atom.loc[(element(list(d.keys())[j]).atomic_number -1)].append(pd.Series(list(d.values())[j]))))
+            else:
+                entrata.append(np.array(pd.Series(nulla)))
+
+        e = np.array(entrata)
+        e = list(np.expand_dims(e,axis = 1))
+
+        return e
+
 
 
     def build_Atom(self):
