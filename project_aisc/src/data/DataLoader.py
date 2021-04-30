@@ -40,7 +40,7 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
                            'discoverers','cas','goldschmidt_class','molcas_gv_color','discovery_year','atomic_radius','series_id',
                            'electronic_configuration','glawe_number','en_ghosh','heat_of_formation','covalent_radius_pyykko_double',
                            'vdw_radius_alvarez','abundance_crust', 'abundance_sea', 'c6_gb','vdw_radius_uff',
-                           'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number',"en_pauling","group_id","evaporation_heat"]
+                           'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number']
 
     ionenergies_col= []
 #non è disponibile il dato per i maggiore di 109
@@ -116,3 +116,154 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
 
 
     return periodic_table
+
+
+
+#%%
+import pandas as pd
+supercon = pd.read_csv('../../data/raw/SuperCon_database.dat',delimiter = r"\s+",names = ['formula','tc'])
+#conto il numero di nan
+supercon['tc'].isna().replace(False,0).sum()
+#remove rows with nan value on tc
+supercon = supercon.dropna()
+#check duplicate row
+duplicated_row = supercon[supercon.duplicated(subset = ['formula'],keep = False)].groupby(supercon['formula']).aggregate({'tc':'mean'}).reset_index()
+duplicated_row
+
+supercon[supercon['tc'].isnull()]
+supercon.drop_duplicates(subset = ['formula'],inplace = True,keep = False)
+supercon[supercon.duplicated(subset = ['formula'],keep = False)]
+supercon[supercon['formula']=='ZrS3']
+
+supercon.duplicated(subset = ['formula'],keep = False).replace(True,1).sum()
+supercon.shape
+supercon.head()
+supercon[supercon['tc']==0].shape
+supercon= supercon.append(duplicated_row,ignore_index=True)
+
+
+from mendeleev import element
+list_element = []
+element(2).symbol
+index = []
+for i in supercon['formula'].index:
+    mol = supercon['formula'][i]
+    if 'x' in mol:
+        index.append(i)
+
+sc_dict={}
+num_element = 96
+for i in range(1,num_element+1):
+    sc_dict[element(i).symbol] = []
+
+sc_dict['material'] = []
+sc_dict['critical_temp'] = []
+sc_dict
+list_element = list(sc_dict.keys())[:num_element]
+
+nums = ['0','1','2','3','4','5','6','7','8','9','.']
+
+l = []
+stringa = 'Y2.13CO212Br122223.5PrH'
+from_string_to_dict(stringa,l)
+l
+supercon['formula'][0]
+for i in range(100):
+    sc_string = supercon['formula'][i]
+    sc_dict['material'].append(sc_string)
+    sc_dict['critical_temp'].append(float(supercon['tc'][i]))
+    tupl_atom = []
+    from_string_to_dict(sc_string,tupl_atom)
+
+    for j in range(len(tupl_atom)):
+        if tupl_atom[j][0] in list_element:
+            sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
+
+
+for j in range(len(tupl_atom)):
+    if tupl_atom[j][0] in list_element:
+        sc_dict[tupl_atom[j][0]] =sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
+
+sc_dict['material'] = []
+sc_dict['material'].append(sc_string)
+pd.DataFrame(sc_dict)
+#%%
+
+def from_string_to_dict(string,lista):
+    nums = ['0','1','2','3','4','5','6','7','8','9','.']
+    i = 0
+    element_name = ''
+    element_quantity = ''
+    on = True
+
+
+    while(i<len(string) and on ):
+        if string[i] not in nums:
+
+            element_name = element_name + string[i]
+
+            if i == len(string)-1:
+                lista.append((element_name,'1'))
+                return
+            if i+1 < len(string):
+                if string[i+1].isupper() :
+                    lista.append((element_name,'1'))
+                    string = string[i+1:]
+                    from_string_to_dict(string,lista)
+                    return
+
+            if i == len(stringa)-1:
+                lista.append((element_name,'1'))
+                return
+
+        if string[i] in nums:
+            element_quantity = ''
+            for j in range(len(string)-i):
+
+                if string[i+j] in nums:
+
+                    element_quantity = element_quantity + string[i+j]
+
+                else:
+                    on = False
+
+
+                    break
+                if i+j+len(element_name)-1 == len(string):
+                    lista.append((element_name,element_quantity))
+                    return
+
+        i +=1
+    lista.append((element_name,element_quantity))
+
+    if i+j < len(string) and string[i+j-1] != nums :
+        string = string[i+j-1:]
+        from_string_to_dict(string,lista)
+
+
+
+
+
+
+#%%
+sc = pd.read_csv('../../data/raw/unique_m.csv')
+sc.shape
+sc['material'].duplicated(keep = False).replace(True,1).sum()
+duplicated_row = sc[sc.duplicated(subset = ['material'],keep = False)].groupby(sc['material']).aggregate({'critical_temp':'mean'}).reset_index()
+sc.drop_duplicates(subset = ['material'],inplace = True,keep = False)
+sc = sc.append(duplicated_row,ignore_index=True)
+dup = []
+index= sc[sc.duplicated(subset = 'material',keep = False)]['material'].index
+for i in index:
+    for j in index[i+1:]:
+        if sc['material'][i] == sc['material'][j]:
+            dup.append((i,j))
+
+len(dup)
+sc['material'][55]
+sc['material'][328]
+sc['material'][375]
+sc['material'][376]
+sc['material'][469]
+sc['material'][576]
+duplicated_row.duplicated().replace(True,1).sum()
