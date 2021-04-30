@@ -16,9 +16,12 @@ import matplotlib.pyplot as plt
 #%%
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
-sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/unique_m.csv')
-
+sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/supercon_tot.csv')
+sc_dataframe.drop(labels= ['material'],axis = 1,inplace= True)
+sc_dataframe.drop(labels=sc_dataframe.columns[0],axis = 1,inplace = True)
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
+for i in sc_dataframe.columns[:-2]:
+    sc_dataframe[i] = sc_dataframe[i].astype(float)
 
 
 path = '../../data/processed/'
@@ -84,7 +87,15 @@ phi.fit(X,Y,epochs=10,validation_data=(X_val,Y_val),callbacks = [EarlyStopping(m
 np.sqrt(phi.evaluate(X_test,Y_test)[0])
 model.rho.evaluate(X_test,Y_test)
 #%%
+model = DeepSet(DataProcessor=atom_data,latent_dim = 1,freeze_latent_dim_on_tuner =True)
 
+model.get_best_model(X,Y,X_val,Y_val)
+
+model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
+
+model.get_best_model(X,Y,X_val,Y_val)
+
+#%%
 model.build_model()
 model.phi.summary()
 model.rho.layers[10].summary()
@@ -92,6 +103,10 @@ model.rho.layers[10].summary()
 callbacks = []
 model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks)
 model.evaluate_model(X_test,Y_test)
+true_positive,true_negative,false_positive,false_negative = model.naive_classificator(0,X_test,Y_test)
+model.confusion_matrix(X_test,Y_test)
+
+
 model.visual_model_perform()
 path_to_save = '../../models/'
 model.save_model(path_to_save,'model0')
@@ -104,7 +119,7 @@ model.rho.layers[10].summary()
 phi.save(path_to_save + 'phi_model')
 #display and save the prediction vs the observed value or the critical Temperature
 
-observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(phi.predict(X_test)).reshape(Y_test.shape[0],)})
+observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
 #%%
 sns_plot = sns.scatterplot(x = observed_vs_predicted['Oberved Critical Temperature (K)'],y= observed_vs_predicted['Predicted Critical Temperature (K)']).get_figure()
 # plt.scatter(x=0.05,y=model.rho.predict(quasi_crystall),color = 'r')
