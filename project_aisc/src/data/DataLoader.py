@@ -162,24 +162,51 @@ sc_dict
 list_element = list(sc_dict.keys())[:num_element]
 
 nums = ['0','1','2','3','4','5','6','7','8','9','.']
-
+indaga = []
 l = []
-stringa = 'Y2.13CO212Br122223.5PrH'
+stringa = 'YSe2Se4'
 from_string_to_dict(stringa,l)
 l
 supercon['formula'][0]
-for i in range(100):
+for i in range(supercon['formula'].shape[0]):
+
     sc_string = supercon['formula'][i]
     sc_dict['material'].append(sc_string)
     sc_dict['critical_temp'].append(float(supercon['tc'][i]))
     tupl_atom = []
     from_string_to_dict(sc_string,tupl_atom)
-
+    list_atom = []
     for j in range(len(tupl_atom)):
+        list_atom.append(tupl_atom[j][0])
+
         if tupl_atom[j][0] in list_element:
             sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
 
+    pozzo = element_list - (set(list_atom))
+    if len(list(set(list_atom))) != len(list_atom):
+        occhio = list_atom
+        indaga.append(i)
+    for o in pozzo:
+        sc_dict[o].append(0)
 
+supercon.drop(indaga,inplace=True)
+supercon.reset_index(inplace=True)
+len(indaga)
+occhio
+sc_dict
+store = []
+for k in list(sc_dict.keys()):
+    if len(sc_dict[k]) != 1000:
+        print(k)
+    store.append(len(sc_dict[k]))
+
+store
+list_atom
+len(element_list.difference(set(list_atom)))
+element_list = set(element_list)
+element_list = list(sc_dict.keys())
+element_list = element_list[:-2]
+len(element_list)
 for j in range(len(tupl_atom)):
     if tupl_atom[j][0] in list_element:
         sc_dict[tupl_atom[j][0]] =sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
