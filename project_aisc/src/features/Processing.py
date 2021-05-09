@@ -204,7 +204,7 @@ class DataProcessor():
         trans_comp = []
         Lista_atomi = lista_atomi.to_numpy()
         for j in range(lista_atomi.shape[0]):
-            for i in range(lista_atomi.shape[1]-1):
+            for i in range(lista_atomi.shape[1]-2):
                 if Lista_atomi[j][i] >0:
                     trans_comp.append({ 'atom' :i , 'perc(%)': Lista_atomi[j][i]})
             sin_comp.append(trans_comp)
@@ -262,7 +262,7 @@ class DataProcessor():
         trans_comp = []
         Lista_atomi = lista_atomi.to_numpy()
         for j in range(lista_atomi.shape[0]):
-            for i in range(lista_atomi.shape[1]-1):
+            for i in range(lista_atomi.shape[1]-2):
                 if Lista_atomi[j][i] >0:
                     trans_comp.append({ 'atom' :i , 'perc(%)': Lista_atomi[j][i]})
             sin_comp.append(trans_comp)
@@ -271,7 +271,7 @@ class DataProcessor():
         input_dim = self.Atom.shape[1]+1
 
         lunghezza_dei_composti = [len(sin_comp[x]) for x in range(len(sin_comp))]
-        self.max_lunghezza = max(lunghezza_dei_composti)
+#        self.max_lunghezza = max(lunghezza_dei_composti)
         max_lunghezza  = self.max_lunghezza
 
         nulla = np.zeros(input_dim)
@@ -280,7 +280,10 @@ class DataProcessor():
         for i in range(len(sin_comp)):
             for j in range(max_lunghezza):
                 if j < len(sin_comp[i]):
-                    entrata.append(self.Atom.loc[sin_comp[i][j]['atom']].append(pd.Series(sin_comp[i][j]['perc(%)'])))
+                    try:
+                        entrata.append(self.Atom.loc[sin_comp[i][j]['atom']].append(pd.Series(sin_comp[i][j]['perc(%)'])))
+                    except:
+                        print(sin_comp[i][j]['atom'])
                 else:
                     entrata.append(pd.Series(nulla))
 
