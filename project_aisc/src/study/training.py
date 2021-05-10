@@ -17,12 +17,8 @@ import matplotlib.pyplot as plt
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
 sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/supercon_tot.csv')
-sc_dataframe.drop(labels= ['material'],axis = 1,inplace= True)
-sc_dataframe.drop(labels=sc_dataframe.columns[0],axis = 1,inplace = True)
-atom_data = Processing.DataProcessor(ptable, sc_dataframe)
-for i in sc_dataframe.columns[:-2]:
-    sc_dataframe[i] = sc_dataframe[i].astype(float)
 
+atom_data = Processing.DataProcessor(ptable, sc_dataframe)
 
 path = '../../data/processed/'
 atom_data.load_data_processed(path + 'dataset_complete.csv')
@@ -37,68 +33,14 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 #Build and train the deep set model
 
 model = DeepSet(DataProcessor=atom_data,latent_dim = 1,freeze_latent_dim_on_tuner =True)
-# import importlib
-# importlib.reload(Processing)
 
 model.load_best_model(directory='../../models/best_model_26-04/',project_name='model_26-04-0')
-#%%
 
-mat = 'H2'
-mat = 'Al14.9Mg44.1Zn41.0'
-
-
-quasi_crystall = atom_data.get_input(mat)
-model.rho.layers[10].predict(quasi_crystall)
-model.rho.predict(quasi_crystall)
-model_phi = model.rho.layers[10]
-model_phi.summary()
-(model.rho.layers[11])
-model_phi.predict(quasi_crystall)
-model.rho.layers[10](quasi_crystall)
-model.rho.layers[11]
-from tensorflow.keras import backend as K
-inputs = model.rho.layers[:10]
-mod = model.rho.layers[10]
-
-from tensorflow.keras.layers import Input,Add
-from tensorflow.keras.models import Model
-layers[0].output
-phi = Model(inputs =inputs ,outputs =outputs )
-inputs = [Input(33) for i in range(10)]
-out = [mod(i) for i in inputs]
-outputs = Add()(out)
-phi.predict(X_test)[0][0]
-#%%
-from mendeleev import element
-tav_per = {}
-from tensorflow.keras.callbacks import EarlyStopping
-from tensorflow.keras.optimizers import Adam
-
-for i in range(1,97):
-    el = element(i).symbol
-    el = el
-    el_input = atom_data.get_input(el)
-    tav_per[el] = [phi.predict(el_input)[0][0]]
-tav_per
-tav_x_phi = pd.DataFrame.from_dict(tav_per)
-tav_x_phi.to_csv()
-phi.compile(optimizer = Adam(1e-5),loss = 'mse',metrics =['mae'])
-phi.fit(X,Y,epochs=10,validation_data=(X_val,Y_val),callbacks = [EarlyStopping(monitor = 'val_loss', min_delta = 0.05,patience = 5, restore_best_weights = True)])
-np.sqrt(phi.evaluate(X_test,Y_test)[0])
-model.rho.evaluate(X_test,Y_test)
-#%%
-model = DeepSet(DataProcessor=atom_data,latent_dim = 1,freeze_latent_dim_on_tuner =True)
-
-model.get_best_model(X,Y,X_val,Y_val)
-
-model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
-
-model.get_best_model(X,Y,X_val,Y_val)
 
 #%%
 model.build_model()
 model.phi.summary()
-model.rho.layers[10].summary()
+
 
 callbacks = []
 model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks)
