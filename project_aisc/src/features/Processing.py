@@ -222,22 +222,19 @@ class DataProcessor():
             for s in feature_chosen:
                 med = np.array([])
                 perc = np.array([])
-                for i in range(len(sin_comp[0])):
-                    med = np.append(med,self.Atom[s].iloc[sin_comp[0][i]['atom']])
-                    perc = np.append(perc,sin_comp[0][i]['perc(%)'])
+                for i in range(len(sin_comp[k])):
+                    med = np.append(med,self.Atom[s].iloc[sin_comp[k][i]['atom']])
+                    perc = np.append(perc,sin_comp[k][i]['perc(%)'])
                 composto.append([med.mean(),np.average(med,weights=perc),
                 self.geo_mean(med),self.weighted_geo_mean(med,perc),self.entropy(med),self.weighted_entropy(med,perc),
                 self.range_feature(med),self.weighted_range_feature(med,perc),np.std(med),self.weighted_std(med,perc)])
             if k == 0:
-                C = np.array(composto).reshape(80,1)
+                C = np.array(composto).reshape(1,80)
             else:
-                C = np.hstack((C,np.array(composto).reshape(80,1)))
+                C = np.concatenate((C,np.array(composto).reshape(1,80)))
 
-        C = np.moveaxis(C,0,1)
 
-        transformer = preprocessing.StandardScaler()
-
-        self.analitic_dataset = pd.DataFrame(transformer.fit_transform(C))
+        self.analitic_dataset = pd.DataFrame(C)
 
 
 
@@ -353,11 +350,13 @@ class DataProcessor():
 
     def entropy(self,med):
         med = np.abs(med)
+        med = np.where(med>0.00000000001,med,0.00000000001)
         return -np.sum(med*np.log(med))
 
 
     def weighted_entropy(self,med,perc):
         med = np.abs(med)
+        med = np.where(med>0.00000000001,med,0.00000000001)
         med = med*perc/np.sum(med*perc)
 
         return -np.sum(med*np.log(med))
