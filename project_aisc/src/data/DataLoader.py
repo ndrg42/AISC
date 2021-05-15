@@ -104,7 +104,7 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
     for i in range(96):
 
         if periodic_table["thermal_conductivity"].isna()[i]:
-           periodic_table.loc[i,"thermal_conductivity"] =thermal_conductivity.values[i]
+           periodic_table.loc[i,"thermal_conductivity"] =thermal_conductivity.astype('float32').values[i]
 
         if periodic_table["specific_heat"].isna()[i]:
             periodic_table.loc[i,"specific_heat"] = specific_heat.astype('float32').values[i]/1000
