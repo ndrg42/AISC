@@ -79,7 +79,7 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
 
     import numpy as np
 
-    path = "/home/claudio/aisc/project_aisc/data/raw/"
+    path = "/home/claudio/AISC/project_aisc/data/raw/"
     periodic_table = pd.DataFrame(periodic_table)
     thermal_conductivity = pd.read_csv(path+"thermal_conductivity.csv",header=None)
 
@@ -104,16 +104,16 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
     for i in range(96):
 
         if periodic_table["thermal_conductivity"].isna()[i]:
-           periodic_table["thermal_conductivity"][i] =thermal_conductivity.values[i]
+           periodic_table.loc[i,"thermal_conductivity"] =thermal_conductivity.values[i]
 
         if periodic_table["specific_heat"].isna()[i]:
-            periodic_table["specific_heat"][i] = specific_heat.astype('float32').values[i]/1000
+            periodic_table.loc[i,"specific_heat"] = specific_heat.astype('float32').values[i]/1000
 
         if periodic_table["electron_affinity"].isna()[i]:
-            periodic_table["electron_affinity"][i] = electron_affinity.astype('float32').values[i]/100
+            periodic_table.loc[i,"electron_affinity"] = electron_affinity.astype('float32').values[i]/100
 
         if periodic_table["density"].isna()[i]:
-            periodic_table["density"][i] = density.astype('float32').values[i]/1000
+            periodic_table.loc[i,"density"] = density.astype('float32').values[i]/1000
 
 
     return periodic_table
