@@ -127,13 +127,14 @@ class DataProcessor():
 
         # Select numerical columns
         numerical_cols = [cname for cname in self.ptable.columns if
-                      self.ptable[cname].dtype in ['int64', 'float64']]
+                      self.ptable[cname].dtype in ['int64', 'float64','int32', 'float32']]
 
 
         X_train_num = self.ptable[numerical_cols].copy()
         # Imputation
         my_imputer = SimpleImputer(strategy='mean')
-        transformer = preprocessing.Normalizer(norm = 'max')
+        # transformer = preprocessing.Normalizer(norm = 'max')
+        transformer = preprocessing.StandardScaler()
         imputed_X_train_num = pd.DataFrame(my_imputer.fit_transform(X_train_num))
         imputed_X_train_num = pd.DataFrame(transformer.fit_transform(imputed_X_train_num))
 
@@ -225,8 +226,8 @@ class DataProcessor():
                     med = np.append(med,self.Atom[s].iloc[sin_comp[0][i]['atom']])
                     perc = np.append(perc,sin_comp[0][i]['perc(%)'])
                 composto.append([med.mean(),np.average(med,weights=perc),
-                geo_mean(med),weighted_geo_mean(med,perc),entropy(med),weighted_entropy(med,perc),
-                range_feature(med),weighted_range_feature(med,perc),np.std(med),weighted_std(med,perc)])
+                self.geo_mean(med),self.weighted_geo_mean(med,perc),self.entropy(med),self.weighted_entropy(med,perc),
+                self.range_feature(med),self.weighted_range_feature(med,perc),np.std(med),self.weighted_std(med,perc)])
             if k == 0:
                 C = np.array(composto).reshape(80,1)
             else:
@@ -234,7 +235,7 @@ class DataProcessor():
 
         C = np.moveaxis(C,0,1)
 
-        transformer = preprocessing.Normalizer(norm = 'max')
+        transformer = preprocessing.StandardScaler()
 
         self.analitic_dataset = pd.DataFrame(transformer.fit_transform(C))
 
@@ -341,20 +342,22 @@ class DataProcessor():
         return X,X_test,y,y_test
 
     def geo_mean(self,iterable):
-        a = np.array(iterable)
+        a = np.abs(iterable)
         return a.prod()**(1.0/len(a))
 
     def weighted_geo_mean(self,med,perc):
-        a = med**(perc/np.sum(perc))
+        a = np.abs(med)**(perc/np.sum(perc))
         return a.prod()**(1.0/len(a))
 
 
 
     def entropy(self,med):
+        med = np.abs(med)
         return -np.sum(med*np.log(med))
 
 
     def weighted_entropy(self,med,perc):
+        med = np.abs(med)
         med = med*perc/np.sum(med*perc)
 
         return -np.sum(med*np.log(med))
@@ -368,7 +371,7 @@ class DataProcessor():
     def weighted_range_feature(self,med,perc):
         med = med*perc/np.sum(perc)
 
-        return range_feature(med)
+        return self.range_feature(med)
 
     def weighted_std(self,med,perc):
         x = abs(med - np.average(med,weights = perc))**2
