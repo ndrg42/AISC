@@ -12,7 +12,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-
+import importlib
+importlib.reload(DeepSets)
 #%%
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
@@ -21,29 +22,100 @@ sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/supercon_tot.csv')
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
 
 path = '../../data/processed/'
-atom_data.load_data_processed(path + 'dataset_complete.csv')
-atom_data.load_data_processed(path + 'dataset_complete_label.csv')
+atom_data.load_data_processed(path + 'dataset_supercon.csv')
+atom_data.load_data_processed(path + 'dataset_supercon_label.csv')
 atom_data.build_Atom()
 atom_data.build_dataset()
 
-X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+# atom_data.save_data_csv(path,'dataset_supercon_label.csv',tc=True)
+
+tc_classification = np.where(atom_data.t_c > 0,1,0)
+tc_classification
+# X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,tc_classification,test_size = 0.2)
 X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
 #%%
 #Build and train the deep set model
 
-model = DeepSet(DataProcessor=atom_data,latent_dim = 1,freeze_latent_dim_on_tuner =True)
+model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
 
-model.load_best_model(directory='../../models/best_model_26-04/',project_name='model_26-04-0')
+model.load_best_architecture(directory='../../models/best_model_08-05/',project_name='model_08-05-0')
 
 
 #%%
+model.rho.summary()
+
 model.build_model()
 model.phi.summary()
 
 
 callbacks = []
-model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks)
+model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=200,patience=15)
+model.rho.evaluate(X_test,Y_test)
+y_pred = np.reshape(np.where(model.rho.predict(X_test)>0.5,1,0),(np.where(model.rho.predict(X_test)>0.5,1,0).shape[0],))
+
+from sklearn.metrics import precision_score,recall_score,f1_score,accuracy_score
+precision_score(Y_test,y_pred)
+recall_score(Y_test,y_pred)
+f1_score(Y_test,y_pred)
+accuracy_score(Y_test,y_pred)
+
+import csv
+with open('class_score.csv', mode='a') as csv_file:
+    csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+    csv_writer.writerow([accuracy_score(Y_test,y_pred),precision_score(Y_test,y_pred),recall_score(Y_test,y_pred),f1_score(Y_test,y_pred)])
+
+
+from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
+#%%
+cm = confusion_matrix(Y_test,y_pred)
+disp = ConfusionMatrixDisplay(cm,display_labels=['non sc','sc'])
+disp.plot().figure_.savefig('class_conf_matrix.png')
+#%%
+n_cycles = 4
+for count in range(n_cycles):
+
+    tc_classification = np.where(atom_data.t_c > 0,1,0)
+
+    X,X_val,y,y_val = atom_data.train_test_split(atom_data.dataset,tc_classification,test_size = 0.2)
+    X,X_test,y,y_test = atom_data.train_test_split(X,y,test_size = 0.2)
+
+    model = DeepSet(DataProcessor = atom_data,latent_dim = 1)
+    model.load_best_architecture(directory='../../models/best_model_08-05/',project_name='model_08-05-0')
+
+    callbacks = []
+    model.fit_model(X,y,X_val,y_val,callbacks= callbacks,epochs=100,patience=15)
+    y_pred = np.reshape(np.where(model.rho.predict(X_test)>0.5,1,0),(np.where(model.rho.predict(X_test)>0.5,1,0).shape[0],))
+
+    with open('class_score.csv', mode='a') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        csv_writer.writerow([accuracy_score(y_test,y_pred),precision_score(y_test,y_pred),recall_score(y_test,y_pred),f1_score(y_test,y_pred)])
+#%%
+
+class_score = pd.read_csv('class_score.csv',names = ['accuracy','precision','recall','f1'])
+
+class_score.mean()
+class_score.std()
+#%%
+import seaborn as sns
+import matplotlib.pyplot as plt
+fig,ax = plt.subplots(2,2)
+#ax.subplots_adjust(hspace=0.6, wspace=0.3)
+fig.suptitle('Classification Metrics',fontsize=20)
+fig.set_figwidth(10)
+fig.set_figheight(10)
+sns.boxplot(class_score['accuracy'],ax=ax[0,0])
+sns.boxplot(class_score['precision'],ax=ax[0,1])
+sns.boxplot(class_score['recall'],ax=ax[1,0])
+sns.boxplot(class_score['f1'],ax=ax[1,1])
+plt.savefig('Classification_Metrics.png')
+plt.show()
+
+#%%
+
 model.evaluate_model(X_test,Y_test)
 true_positive,true_negative,false_positive,false_negative = model.naive_classificator(0,X_test,Y_test)
 model.confusion_matrix(X_test,Y_test)
