@@ -18,9 +18,11 @@ importlib.reload(DeepSets)
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
 sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/supercon_tot.csv')
-
+sc_dataframe= sc_dataframe[sc_dataframe['critical_temp']>0]
+sc_dataframe.shape
+(sc_dataframe['critical_temp'] == 0).sum()
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
-
+sc_dataframe.shape
 path = '../../data/processed/'
 atom_data.load_data_processed(path + 'dataset_supercon.csv')
 atom_data.load_data_processed(path + 'dataset_supercon_label.csv')
@@ -31,28 +33,74 @@ atom_data.build_dataset()
 
 tc_classification = np.where(atom_data.t_c > 0,1,0)
 tc_classification
-# X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+
+atom_data.dataset = [np.expand_dims(atom_data.dataset[i],axis=2) for i in range(len(atom_data.dataset))]
+
+X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
 X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,tc_classification,test_size = 0.2)
 X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
 #%%
 #Build and train the deep set model
 
-model = DeepSet(DataProcessor=atom_data,latent_dim = 1)
+model = DeepSet(DataProcessor=atom_data,latent_dim = 300)
 
-model.load_best_architecture(directory='../../models/best_model_08-05/',project_name='model_08-05-0')
+model.load_best_architecture(directory='../../models/best_model_17-05/',project_name='model_17-05-1')
 
+
+#%%
+import csv
+n_cycles = 5
+for count in range(n_cycles):
+
+
+    X,X_val,y,y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+    X,X_test,y,y_test = atom_data.train_test_split(X,y,test_size = 0.2)
+
+    model = DeepSet(DataProcessor = atom_data,latent_dim = 1)
+    model.load_best_architecture(directory='../../models/best_model_17-05/',project_name='model_17-05-1')
+
+    callbacks = []
+    model.fit_model(X,y,X_val,y_val,callbacks= callbacks,epochs=400,patience=30)
+
+
+    with open('regressor_score.csv', mode='a') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+
+        csv_writer.writerow([model.rho.evaluate(X_test,y_test)[0],model.rho.evaluate(X_test,y_test)[1],model.rho.evaluate(X_test,y_test)[2],r2_score(model.rho.predict(X_test),y_test)])
+#%%
+regressor_score = pd.read_csv('regressor_score.csv',names= ['MSE','RMSE','MAE','R_Square'])
+regressor_score.mean()
+regressor_score.std()
+#%%
+import seaborn as sns
+import matplotlib.pyplot as plt
+fig,ax = plt.subplots(2,2)
+#ax.subplots_adjust(hspace=0.6, wspace=0.3)
+fig.suptitle('Regression Metrics',fontsize=20)
+fig.set_figwidth(10)
+fig.set_figheight(10)
+sns.boxplot(regressor_score['MSE'],ax=ax[0,0])
+sns.boxplot(regressor_score['RMSE'],ax=ax[0,1])
+sns.boxplot(regressor_score['MAE'],ax=ax[1,0])
+sns.boxplot(regressor_score['R_Square'],ax=ax[1,1])
+plt.savefig('Regressor_Metrics.png')
+plt.show()
 
 #%%
 model.rho.summary()
 
-model.build_model()
+model.build_hybrid_model()
 model.phi.summary()
 
 
 callbacks = []
-model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=200,patience=15)
-model.rho.evaluate(X_test,Y_test)
+model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+model.rho.evaluate(X_test,Y_test)[0]
+
+from sklearn.metrics import r2_score
+r2_score(model.rho.predict(X_test),Y_test)
+
 y_pred = np.reshape(np.where(model.rho.predict(X_test)>0.5,1,0),(np.where(model.rho.predict(X_test)>0.5,1,0).shape[0],))
 
 from sklearn.metrics import precision_score,recall_score,f1_score,accuracy_score
@@ -133,14 +181,14 @@ model.rho.layers[10].summary()
 phi.save(path_to_save + 'phi_model')
 #display and save the prediction vs the observed value or the critical Temperature
 
-observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
+observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
 #%%
 sns_plot = sns.scatterplot(x = observed_vs_predicted['Oberved Critical Temperature (K)'],y= observed_vs_predicted['Predicted Critical Temperature (K)']).get_figure()
 # plt.scatter(x=0.05,y=model.rho.predict(quasi_crystall),color = 'r')
 # plt.scatter(x=0.8,y=2.23,color = 'y')
 # plt.xlim([0,5])
 # plt.ylim([0,5])
-plt.savefig('predicted_vs_observed_atom.png')
+plt.savefig('predicted_vs_observed_regressor.png')
 
 
 #%%
