@@ -178,8 +178,8 @@ model.save_model(path_to_save,'model0')
 model.load_best_model(directory = '../../models/best_model_16-04/',project_name ='model_16-04-0')
 model.load_model(path='../../models',name='/')
 model.load_best_architecture(directory = '../../models/best_model_11-04/',project_name ='model_11-04-3')
-model.rho.layers[10].predict(X_test)
-model.rho.layers[10].summary()
+model.rho.layers[11](X_test).shape
+model.rho.layers[11].summary()
 
 phi.save(path_to_save + 'phi_model')
 #display and save the prediction vs the observed value or the critical Temperature
@@ -328,6 +328,24 @@ sns.scatterplot(atom_latent_space[0],atom_latent_space[1])
 #%%
 #Plot latent dim= 2 for molecules by regressor representation
 
+#Split the dataset in train, validation and test set
+X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
+
+#Create the model with latent dim= 2 and train it
+model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+
+callbacks = []
+model.build_model()
+model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+
+#Extrapolate the model phi+ Add() that take as input atomic features and gives as output bidimensional features of molecules in the latent space
+phi_molecules = model.rho.layers[11]
+
+#Create the bidimensional representation of the molecules
+atom_latent_space = phi_molecules.predict(atom_data.dataset)
+#Plot the representation of the latent space of molecules
+sns.scatterplot(atom_latent_space[0],atom_latent_space[1],hue=np.array(atom_data.t_c))
 
 #%%
 #Plot latent dim= 2 for atoms by Classifier representation
