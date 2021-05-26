@@ -294,12 +294,15 @@ def plot_fig(x,y,color='ro',save = False,path= None,name = None,xlabel=None,ylab
     plt.show()
 #%%
 #Regression with quasi_crystall superconductors
-
-
-
+quasi_crystall_0 = 'Al14.9Mg44.1Zn41.0'
+AC_0 = 'Al14.9Mg43.0Zn42.0'
+qc = 'Al49.0Zn49.0Mg32'
 
 #%%
 #Classification with quasi_crystall superconductors
+quasi_crystall_0 = 'Al14.9Mg44.1Zn41.0'
+AC_0 = 'Al14.9Mg43.0Zn42.0'
+qc = 'Al49.0Zn49.0Mg32'
 
 
 
@@ -392,7 +395,7 @@ phi_molecules = model.rho.layers[11]
 #Create the bidimensional representation of the atoms
 atom_latent_space = phi_molecules(atom_data.dataset)
 #Plot the representation of the atomic latent space
-sns.scatterplot(atom_latent_space[0],atom_latent_space[1])
+sns.scatterplot(atom_latent_space[0],atom_latent_space[1],hue=tc_classification)
 #%%
 #cross-control for wrong prediction with regressor and Classifier
 
