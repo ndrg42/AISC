@@ -46,7 +46,7 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 model = DeepSet(DataProcessor=atom_data,latent_dim = 300)
 
 model.load_best_architecture(directory='../../models/best_model_17-05/',project_name='model_17-05-1')
-
+model.load_model(path='../../models/',name = 'regressor')
 
 #%%
 import csv
@@ -90,6 +90,9 @@ plt.show()
 #%%
 model.rho.summary()
 
+phi = model.rho.layers[10]
+phi.compile(loss='mse',optimizer = 'adam',metrics=['mae'])
+phi.evaluate(X_test,Y_test)
 model.build_hybrid_model()
 model.phi.summary()
 
@@ -289,3 +292,81 @@ def plot_fig(x,y,color='ro',save = False,path= None,name = None,xlabel=None,ylab
         plt.savefig(path+name)
     plt.xlim([-0.2,0.2])
     plt.show()
+#%%
+#Regression with quasi_crystall superconductors
+
+
+
+
+#%%
+#Classification with quasi_crystall superconductors
+
+
+
+#%%
+#Plot latent dim= 2 for atoms by regressor representation
+X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
+
+model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+
+callbacks = []
+model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+
+phi = model.rho.layers[10]
+phi.compile(loss = 'mse',optimizer = 'adam',metrics = ['mae'])
+
+atom_latent_space = phi.predict(atom_data.dataset)
+
+#%%
+#Plot latent dim= 2 for molecules by regressor representation
+
+
+#%%
+#Plot latent dim= 2 for atoms by Classifier representation
+
+#%%
+#Plot latent dim= 2 for molecules by Classifier representation
+
+#%%
+#cross-control for wrong prediction with regressor and Classifier
+
+regressor = DeepSet(DataProcessor=atom_data,latent_dim = 300)
+regressor.load_model(path='../../models/',name = 'regressor')
+
+X_r,X_val_r,Y_r,Y_val_r = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
+X_r,X_test_r,Y_r,Y_test_r = atom_data.train_test_split(X_r,Y_r,test_size = 0.2)
+
+callbacks = []
+regressor.fit_model(X_r,Y_r,X_val_r,Y_val_r,callbacks= callbacks,epochs=400,patience=20)
+
+classifier = DeepSet(DataProcessor=atom_data,latent_dim = 300)
+classifier.load_model(path='../../models/',name = 'classifier')
+
+tc_classification = np.where(atom_data.t_c > 0,1,0)
+
+X_c,X_val_c,Y_c,Y_val_c = atom_data.train_test_split(atom_data.dataset,tc_classification,test_size = 0.2)
+X_c,X_test_c,Y_c,Y_test_c = atom_data.train_test_split(X_c,Y_c,test_size = 0.2)
+
+classifier.fit_model(X_c,Y_c,X_val_c,Y_val_c,callbacks= callbacks,epochs=400,patience=20)
+
+Y_pred_r = regressor.predict(X_test_r)
+
+threshold = 20
+
+outliers = np.abs(Y_pred_r - Y_test_r) > threshold
+
+material_outliers_r = atom_data.dataset['material'][outliers]
+
+
+Y_pred_c = classifier.predict(X_test_c)
+
+false_pred = (Y_pred_c == Y_test_c)
+material_outliers_c = atom_data.dataset['material'][false_pred]
+
+material_outliers_c == material_outliers_r
+
+
+
+#%%
+#Autoencoder
