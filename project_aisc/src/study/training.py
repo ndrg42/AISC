@@ -305,19 +305,25 @@ def plot_fig(x,y,color='ro',save = False,path= None,name = None,xlabel=None,ylab
 
 #%%
 #Plot latent dim= 2 for atoms by regressor representation
+
+#Split the dataset in train, validation and test set
 X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
 X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
+#Create the model with latent dim= 2 and train it
 model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
 
 callbacks = []
 model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
 
+#Extrapolate the model phi that take as input atomic features and gives as output bidimensional atomic features in the latent space
 phi = model.rho.layers[10]
 phi.compile(loss = 'mse',optimizer = 'adam',metrics = ['mae'])
 
+#Create the bidimensional representation of the atoms
 atom_latent_space = phi.predict(atom_data.dataset)
-
+#Plot the representation of the atomic latent space
+sns.scatterplot(atom_latent_space[0],atom_latent_space[1])
 #%%
 #Plot latent dim= 2 for molecules by regressor representation
 
