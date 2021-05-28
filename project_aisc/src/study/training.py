@@ -18,11 +18,9 @@ importlib.reload(DeepSets)
 #Load and prepare the data for the model traning
 ptable = DataLoader.PeriodicTable()
 sc_dataframe = DataLoader.SuperCon(sc_path ='../../data/raw/supercon_tot.csv')
-sc_dataframe= sc_dataframe[sc_dataframe['critical_temp']>0]
-sc_dataframe.shape
-(sc_dataframe['critical_temp'] == 0).sum()
+
 atom_data = Processing.DataProcessor(ptable, sc_dataframe)
-sc_dataframe.shape
+
 path = '../../data/processed/'
 atom_data.load_data_processed(path + 'dataset_supercon.csv')
 atom_data.load_data_processed(path + 'dataset_supercon_label.csv')
@@ -184,7 +182,7 @@ model.rho.layers[11].summary()
 phi.save(path_to_save + 'phi_model')
 #display and save the prediction vs the observed value or the critical Temperature
 
-observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
+observed_vs_predicted = pd.DataFrame({'Oberved Critical Temperature (K)':Y_test,'Predicted Critical Temperature (K)':np.array(model.rho.predict(X_test)).reshape(Y_test.shape[0],)})
 #%%
 sns_plot = sns.scatterplot(x = observed_vs_predicted['Oberved Critical Temperature (K)'],y= observed_vs_predicted['Predicted Critical Temperature (K)']).get_figure()
 # plt.scatter(x=0.05,y=model.rho.predict(quasi_crystall),color = 'r')
@@ -304,8 +302,9 @@ quasi_crystall_0 = 'Al14.9Mg44.1Zn41.0'
 AC_0 = 'Al14.9Mg43.0Zn42.0'
 qc = 'Al49.0Zn49.0Mg32'
 
-
-
+model.rho.predict(atom_data.get_input(quasi_crystall_0))
+model.rho.predict(atom_data.get_input(AC_0))
+model.rho.predict(atom_data.get_input(qc))
 #%%
 #Plot latent dim= 2 for atoms by regressor representation
 
@@ -319,36 +318,72 @@ model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
 callbacks = []
 model.build_model()
 model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+np.sqrt(model.rho.evaluate(X_test,Y_test)[0])
+
+
+y_pred = np.reshape(np.where(model.rho.predict(X_test)>0.5,1,0),(np.where(model.rho.predict(X_test)>0.5,1,0).shape[0],))
+
+from sklearn.metrics import precision_score,recall_score,f1_score,accuracy_score
+precision_score(Y_test,y_pred)
+recall_score(Y_test,y_pred)
+f1_score(Y_test,y_pred)
+accuracy_score(Y_test,y_pred)
+
 
 #Extrapolate the model phi that take as input atomic features and gives as output bidimensional atomic features in the latent space
 phi = model.rho.layers[10]
 phi.compile(loss = 'mse',optimizer = 'adam',metrics = ['mae'])
-
+phi.summary()
 #Create the bidimensional representation of the atoms
-atom_latent_space = phi.predict(atom_data.dataset)
+atom_latent_space = []
+from mendeleev import element
+for i in range(1,87):
+    symbol = element(i).symbol
+    element_name = atom_data.get_input(symbol)
+    atom_latent_space.append(phi.predict(element_name[0]))
+
+atom_latent_space = np.reshape(np.array(atom_latent_space),(86,2))
 #Plot the representation of the atomic latent space
-sns.scatterplot(atom_latent_space[0],atom_latent_space[1])
+#%%
+plt.figure(figsize=(9,9))
+ax = sns.scatterplot(atom_latent_space[:,0],atom_latent_space[:,1])
+for line in range(0,atom_latent_space.shape[0]):
+    plt.text(atom_latent_space[line,0]+0.2,atom_latent_space[line,1],element(line+1).symbol)
+ax.set_title('Atomic Features (1-86) Predicted by Phi')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+#ax.get_figure().savefig('atomic_features_predicted_by_phi_with_symbol.png')
+
 #%%
 #Plot latent dim= 2 for molecules by regressor representation
 
-#Split the dataset in train, validation and test set
-X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
-X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
+from tensorflow.keras.layers import Input,Add
+from tensorflow.keras.models import Model
+def build_phi_molecules():
+    inputs= [Input(33) for i in range(10)]
+    outputs = [phi(i) for i in inputs]
 
-#Create the model with latent dim= 2 and train it
-model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+    y = Add()(outputs)
 
-callbacks = []
-model.build_model()
-model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+    model = Model(inputs = inputs,outputs=y)
+    return model
 
-#Extrapolate the model phi+ Add() that take as input atomic features and gives as output bidimensional features of molecules in the latent space
-phi_molecules = model.rho.layers[11]
-
+phi_molecules = build_phi_molecules()
+phi_molecules.compile(loss = 'mse',optimizer = 'adam',metrics = ['mae'])
+phi_molecules.summary()
 #Create the bidimensional representation of the molecules
-atom_latent_space = phi_molecules(atom_data.dataset)
+molecules_latent_space = phi_molecules(atom_data.dataset)
+
+#%%
 #Plot the representation of the latent space of molecules
-sns.scatterplot(atom_latent_space[0],atom_latent_space[1],hue=np.array(atom_data.t_c))
+plt.figure(figsize=(7,6))
+ax = sns.scatterplot(molecules_latent_space[:,0],molecules_latent_space[:,1],hue=np.array(atom_data.t_c))
+ax.set_title('Features of the Molecules Predicted by Phi+Add')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+legend = ax.get_legend()
+legend.set_title('critical temperature')
+#ax.get_figure().savefig('features_molecules_predicted_by_phi_add.png')
 
 #%%
 #Plot latent dim= 2 for atoms by Classifier representation
@@ -371,31 +406,60 @@ phi.compile(loss = 'binary_crossentropy',optimizer = 'adam',metrics = ['accuracy
 
 #Create the bidimensional representation of the atoms
 atom_latent_space = phi.predict(atom_data.dataset)
+
+atom_latent_space = []
+from mendeleev import element
+for i in range(1,87):
+    symbol = element(i).symbol
+    element_name = atom_data.get_input(symbol)
+    atom_latent_space.append(phi.predict(element_name[0]))
+
+atom_latent_space = np.reshape(np.array(atom_latent_space),(86,2))
 #Plot the representation of the atomic latent space
-sns.scatterplot(atom_latent_space[0],atom_latent_space[1])
+#%%
+plt.figure(figsize=(9,9))
+ax = sns.scatterplot(atom_latent_space[:,0],atom_latent_space[:,1])
+for line in range(0,atom_latent_space.shape[0]):
+    plt.text(atom_latent_space[line,0]+0.02,atom_latent_space[line,1],element(line+1).symbol)
+ax.set_title('Atomic Features (1-86) Predicted by Phi Classifier')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+ax.get_figure().savefig('atomic_features_predicted_by_phi_classifier_with_symbol.png')
+
 #%%
 #Plot latent dim= 2 for molecules by Classifier representation
+len(model.rho.layers[12:])
+from tensorflow.keras.layers import Input,Add
+from tensorflow.keras.models import Model
+def build_phi_classifier_molecules():
+    inputs= [Input(33) for i in range(10)]
+    outputs = [phi(i) for i in inputs]
 
-#Split the dataset in train, validation and test set
-tc_classification = np.where(atom_data.t_c > 0,1,0)
+    y = Add()(outputs)
+    for k in range(len(model.rho.layers[12:])):
+        y = model.rho.layers[12+k](y)
 
-X,X_val,Y,Y_val = atom_data.train_test_split(atom_data.dataset,tc_classification,test_size = 0.2)
-X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
+    m = Model(inputs = inputs,outputs=y)
+    return m
 
-#Create the model with latent dim= 2 and train it
-model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+phi_molecules = build_phi_classifier_molecules()
+phi_molecules.compile(loss = 'binary_crossentropy',optimizer = 'adam',metrics = ['accuracy'])
+phi_molecules.summary()
+phi_molecules.evaluate(X_test,Y_test)
+#Create the bidimensional representation of the molecules
+molecules_latent_space = phi_molecules(atom_data.dataset)
 
-callbacks = []
-model.build_model()
-model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+#%%
+#Plot the representation of the latent space of molecules
+plt.figure(figsize=(7,6))
+ax = sns.scatterplot(molecules_latent_space[:,0],molecules_latent_space[:,1],hue=tc_classification)
+ax.set_title('Features of the Molecules Predicted by Phi+Add')
+ax.set_xlabel('X1')
+ax.set_ylabel('X2')
+legend = ax.get_legend()
+legend.set_title('critical temperature')
+ax.get_figure().savefig('features_molecules_predicted_by_phi_add_classifier.png')
 
-#Extrapolate the model phi that take as input atomic features and gives as output bidimensional atomic features in the latent space
-phi_molecules = model.rho.layers[11]
-
-#Create the bidimensional representation of the atoms
-atom_latent_space = phi_molecules(atom_data.dataset)
-#Plot the representation of the atomic latent space
-sns.scatterplot(atom_latent_space[0],atom_latent_space[1],hue=tc_classification)
 #%%
 #cross-control for wrong prediction with regressor and Classifier
 
