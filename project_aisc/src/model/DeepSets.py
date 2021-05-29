@@ -36,7 +36,7 @@ class DeepSet():
         self.freeze_latent_dim_on_tuner = freeze_latent_dim_on_tuner
 
 
-    def build_phi_regressor(self):
+    def build_phi(self):
 
         input_atom = Input(shape = (self.input_dim))
         #x = BatchNormalization()(input_atom)
@@ -73,11 +73,40 @@ class DeepSet():
 
     def build_regressor(self,learning_rate=0.0001):
 
-        self.build_phi_regressor()
+        self.build_phi()
         self.build_rho_regressor()
         self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
                           loss='mse',
                           metrics=['mae',tf.keras.metrics.RootMeanSquaredError()])
+
+
+
+    def build_rho_classifier(self):
+
+        inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
+        outputs = [self.phi(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        #y = BatchNormalization()(y)
+        #y = Dropout(0.5)(y)
+        y = Dense(300,activation = "relu")(y)
+        #y = Dropout(0.5)(y)
+        y = Dense(300,activation = "relu")(y)
+        #y = BatchNormalization()(y)
+        y = Dense(100,activation = "relu")(y)
+        output = Dense(1,activation = "sigmoid",activity_regularizer = 'l1')(y)
+
+        self.rho = Model(inputs = inputs,outputs = output)
+
+    def build_classifier(self,learning_rate=0.0001):
+
+        self.build_phi()
+        self.build_rho_classifier()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='binary_crossentropy',
+                          metrics=['accuracy',tf.keras.metrics.Precision()])
+
 
 
     def fit_model(self,X,y,X_val,y_val,callbacks,epochs= 50,batch_size = 64,patience=5):
