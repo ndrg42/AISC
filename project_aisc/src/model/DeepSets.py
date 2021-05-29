@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
-from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM
+from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM,Conv1D,Flatten
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 import tensorflow as tf
@@ -36,54 +36,54 @@ class DeepSet():
         self.freeze_latent_dim_on_tuner = freeze_latent_dim_on_tuner
 
 
-    def build_phi(self):
+    def build_phi_regressor(self):
 
         input_atom = Input(shape = (self.input_dim))
-        x = BatchNormalization()(input_atom)
-        x = Dropout(0.5)(x)
-        x = Dense(200,activation = "relu")(x)
-        x = Dropout(0.5)(x)
-        x = BatchNormalization()(x)
-        x = Dense(200,activation = "relu")(x)
-        x = Dropout(0.3)(x)
-        x = Dense(200,activation = "relu")(x)
+        #x = BatchNormalization()(input_atom)
+        #x = Dropout(0.5)(x)
+        x = Dense(300,activation = "relu")(input_atom)
+        #x = Dropout(0.5)(x)
+        #x = BatchNormalization()(x)
+        x = Dense(300,activation = "relu")(x)
+        #x = Dropout(0.3)(x)
+        x = Dense(300,activation = "relu")(x)
         y = Dense(self.latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
 
         self.phi = Model(inputs = input_atom,outputs = y)
 
 
 
-    def build_rho(self):
+    def build_rho_regressor(self):
 
         inputs= [Input(self.input_dim) for i in range(self.n_inputs)]
         outputs = [self.phi(i) for i in inputs]
 
         y = Add()(outputs)
         y = Dense(300,activation = "relu")(y)
-        y = BatchNormalization()(y)
-        y = Dropout(0.5)(y)
+        #y = BatchNormalization()(y)
+        #y = Dropout(0.5)(y)
         y = Dense(300,activation = "relu")(y)
-        y = Dropout(0.5)(y)
-        y = Dense(200,activation = "relu")(y)
-        y = BatchNormalization()(y)
+        #y = Dropout(0.5)(y)
+        y = Dense(300,activation = "relu")(y)
+        #y = BatchNormalization()(y)
         y = Dense(100,activation = "relu")(y)
-        output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
+        output = Dense(1,activation = "relu",activity_regularizer = 'l1')(y)
 
         self.rho = Model(inputs = inputs,outputs = output)
 
-    def build_model(self,learning_rate=0.0001):
+    def build_regressor(self,learning_rate=0.0001):
 
-        self.build_phi()
-        self.build_rho()
+        self.build_phi_regressor()
+        self.build_rho_regressor()
         self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
-                          loss='mean_squared_error',
-                          metrics=['mean_absolute_error'])
+                          loss='mse',
+                          metrics=['mae',tf.keras.metrics.RootMeanSquaredError()])
 
 
     def fit_model(self,X,y,X_val,y_val,callbacks,epochs= 50,batch_size = 64,patience=5):
 
         #early_stopping_callback = EarlyStopping(monitor = 'val_mean_absolute_error',min_delta = 0.05,patience = 5, restore_best_weights = True)
-        callbacks.append(EarlyStopping(monitor = 'val_mean_absolute_error',min_delta = 0.05,patience = patience, restore_best_weights = True))
+        callbacks.append(EarlyStopping(monitor = 'val_loss',min_delta = 0.003,patience = patience, restore_best_weights = True))
         self.history = self.rho.fit(x = X,y = y,epochs =epochs, batch_size = batch_size,shuffle = True ,validation_data =(X_val,y_val),callbacks = callbacks )
 
     def evaluate_model(self,X_test,y_test):
@@ -107,8 +107,8 @@ class DeepSet():
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                          loss='mean_squared_error',
-                          metrics=['mean_absolute_error'])
+                          loss='mse',
+                          metrics=[tf.keras.metrics.RootMeanSquaredError(),'mae'])
 
         return model
 
@@ -116,13 +116,16 @@ class DeepSet():
 
         input_atom = Input(shape = (self.input_dim))
         x = Dense(self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
-        layers = hp.Int('layers_1',min_value = 1,max_value = 20,step = 1)
+        layers = hp.Int('layers_1',min_value = 2,max_value = 20,step = 2)
 
         for layer in range(layers):
-            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 500,step = 32),activation='relu')(x)
+            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 1012,step = 32),activation='relu',activity_regularizer = 'l1')(x)
+            #x = BatchNormalization()(x)
+            #x = Dropout(hp.Float('dropout',0,0.5,step = 0.1))(x)
 
         if self.freeze_latent_dim_on_tuner:
-            x = Dense(self.latent_dim,activation='relu')(x)
+            x = Dense(self.latent_dim,activation='linear')(x)
+
 
         phi = Model(inputs = input_atom,outputs = x)
 
@@ -135,17 +138,20 @@ class DeepSet():
         outputs = [phi(i) for i in inputs]
 
         y = Add()(outputs)
-        layers = hp.Int('layers_2',min_value = 1,max_value = 20,step = 1)
+        layers = hp.Int('layers_2',min_value = 2,max_value = 20,step = 2)
         for layer in range(layers):
-            y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 500,step = 32),activation='relu')(y)
+            y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 1024,step = 32),activation='relu')(y)
+            #y = BatchNormalization()(y)
+            #y = Dropout(hp.Float('dropout',0,0.5,step = 0.1))(y)
 
-
-        output = Dense(1,activation = "linear",activity_regularizer = 'l1')(y)
+        #activity_regularizer = hp.Choice('regularizer_rho',['l1','l2'])
+        #output = Dense(1,activation = "sigmoid",activity_regularizer = activity_regularizer)(y)
+        output = Dense(1,activation = "linear",activity_regularizer = 'l2')(y)
         rho = Model(inputs = inputs,outputs = output)
 
         return rho
 
-    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=50,epochs=100,num_best_model=1):
+    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=80,epochs=100,num_best_model=1):
 
         import datetime
         import os
@@ -171,7 +177,7 @@ class DeepSet():
                      project_name=project_name
                      )
 
-        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=10)
+        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
 
         tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
 
@@ -296,52 +302,6 @@ class DeepSet():
         plt.show()
 
 
-    def get_input(self,compound):
-
-        num = ['0','1','2','3','4','5','6','7','8','9','.']
-        key=''
-        d= {}
-        value = ''
-        ok = False
-        compound = compound
-        for s in compound:
-            if s not in num:
-                if ok == True:
-                    d.update({key:float(value)})
-                    key = ''
-                    value = ''
-                    ok = False
-
-                key = key+s
-            if s in num:
-                value = value +s
-                ok = True
-        if ok == False:
-            d.update({key:1.0})
-        if ok == True:
-            d.update({key:float(value)})
-
-        input_dim = self.input_dim
-        nulla = np.zeros(input_dim)
-        entrata = []
-
-        try:
-            if self.Atom == None:
-                super().build_Atom()
-        except:
-            pass
-
-        for j in range(self.max_lunghezza):
-            if j < len(d):
-                entrata.append(np.array(self.Atom.loc[(element(list(d.keys())[j]).atomic_number -1)].append(pd.Series(list(d.values())[j]))))
-            else:
-                entrata.append(np.array(pd.Series(nulla)))
-
-        e = np.array(entrata)
-        e = list(np.expand_dims(e,axis = 1))
-
-        return e
-
     def input_from_dict(self,d_m):
 
         input_dim = self.input_dim
@@ -445,3 +405,75 @@ class DeepSet():
 
         print("sparse_categorical_crossentropy: ",self.rho_classificator.evaluate(X_test,y_test,verbose=0)[0],"\nAccuracy: ",self.rho_classificator.evaluate(X_test,y_test,verbose=0)[1])
         print("Accuracy on test: ",np.sqrt(self.rho_classificator.evaluate(X_test,y_test,verbose = 0)[1]))
+
+
+
+    def build_hybrid_phi(self):
+
+        input_atom = Input(shape = (self.input_dim,1))
+        #x = BatchNormalization()(input_atom)
+        #x = Dropout(0.5)(x)
+        x = Conv1D(32,3,padding='same',activation = "relu")(input_atom)
+        #x = BatchNormalization()(x)
+        #x = Dropout(0.3)(x)
+
+        x = Conv1D(64,3,padding='same',activation = "relu")(x)
+        #x = BatchNormalization()(x)
+        #x = Dropout(0.3)(x)
+
+
+        x = Conv1D(64,3,padding='same',activation = "relu")(x)
+        #x = BatchNormalization()(x)
+        #x = Dropout(0.5)(x)
+
+        #x = LSTM(128,return_sequences=True)(x)
+        x = LSTM(64,return_sequences=False)(x)
+
+        x = Dense(300,activation = "relu")(x)
+
+        y = Dense(self.latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
+
+        model = Model(inputs = input_atom,outputs = y)
+
+        return model
+
+
+
+    def build_hybrid_rho(self):
+
+        inputs= [Input(self.input_dim,1) for i in range(self.n_inputs)]
+        phi = self.build_hybrid_phi()
+        outputs = [phi(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = tf.expand_dims(y,axis=2)
+        y = Conv1D(32,3,padding='same',activation = "relu")(y)
+        #y = BatchNormalization()(y)
+        #y = Dropout(0.3)(y)
+
+        y = Conv1D(64,3,padding='same',activation = "relu")(y)
+        #y = BatchNormalization()(y)
+        #y = Dropout(0.3)(y)
+
+
+        y = Conv1D(64,3,padding='same',activation = "relu")(y)
+        #y = BatchNormalization()(y)
+        #y = Dropout(0.5)(y)
+
+        #y = LSTM(128,return_sequences=True)(y)
+        y = LSTM(64,return_sequences=False)(y)
+
+
+        y = Dense(300,activation = "relu")(y)
+
+        y = Dense(self.latent_dim,activation = "linear",activity_regularizer = 'l2')(y)
+
+        self.rho = Model(inputs = inputs,outputs = y)
+
+    def build_hybrid_model(self,learning_rate=0.0001):
+
+        self.build_hybrid_phi()
+        self.build_hybrid_rho()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='mean_squared_error',
+                          metrics=['mean_absolute_error'])
