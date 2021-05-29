@@ -43,8 +43,9 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
 model = DeepSet(DataProcessor=atom_data,latent_dim = 300)
 
-model.load_best_architecture(directory='../../models/best_model_17-05/',project_name='model_17-05-1')
-model.load_model(path='../../models/',name = 'regressor')
+model.load_best_architecture(directory='../../models/best_model_08-05/',project_name='model_08-05-0')
+model.load_model(path='../../models/',name = 'classifier')
+model.save_model(path='../../models/',name = 'classifier')
 
 #%%
 import csv
@@ -117,8 +118,8 @@ with open('class_score.csv', mode='a') as csv_file:
     csv_writer.writerow([accuracy_score(Y_test,y_pred),precision_score(Y_test,y_pred),recall_score(Y_test,y_pred),f1_score(Y_test,y_pred)])
 
 
-from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 #%%
+from sklearn.metrics import confusion_matrix,ConfusionMatrixDisplay
 cm = confusion_matrix(Y_test,y_pred)
 disp = ConfusionMatrixDisplay(cm,display_labels=['non sc','sc'])
 disp.plot().figure_.savefig('class_conf_matrix.png')
@@ -302,6 +303,7 @@ quasi_crystall_0 = 'Al14.9Mg44.1Zn41.0'
 AC_0 = 'Al14.9Mg43.0Zn42.0'
 qc = 'Al49.0Zn49.0Mg32'
 
+
 model.rho.predict(atom_data.get_input(quasi_crystall_0))
 model.rho.predict(atom_data.get_input(AC_0))
 model.rho.predict(atom_data.get_input(qc))
@@ -314,10 +316,10 @@ X,X_test,Y,Y_test = atom_data.train_test_split(X,Y,test_size = 0.2)
 
 #Create the model with latent dim= 2 and train it
 model = DeepSet(DataProcessor=atom_data,latent_dim = 2)
-
+model.rho.summary()
 callbacks = []
-model.build_model()
-model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=400,patience=20)
+model.build_classifier()
+model.fit_model(X,Y,X_val,Y_val,callbacks= callbacks,epochs=4,patience=20)
 np.sqrt(model.rho.evaluate(X_test,Y_test)[0])
 
 
@@ -463,7 +465,8 @@ ax.get_figure().savefig('features_molecules_predicted_by_phi_add_classifier.png'
 #%%
 #cross-control for wrong prediction with regressor and Classifier
 
-regressor = DeepSet(DataProcessor=atom_data,latent_dim = 300)
+regressor = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+regressor.build_regressor()
 regressor.load_model(path='../../models/',name = 'regressor')
 
 X_r,X_val_r,Y_r,Y_val_r = atom_data.train_test_split(atom_data.dataset,np.array(atom_data.t_c),test_size = 0.2)
@@ -472,7 +475,8 @@ X_r,X_test_r,Y_r,Y_test_r = atom_data.train_test_split(X_r,Y_r,test_size = 0.2)
 callbacks = []
 regressor.fit_model(X_r,Y_r,X_val_r,Y_val_r,callbacks= callbacks,epochs=400,patience=20)
 
-classifier = DeepSet(DataProcessor=atom_data,latent_dim = 300)
+classifier = DeepSet(DataProcessor=atom_data,latent_dim = 2)
+classifier.build_classifier()
 classifier.load_model(path='../../models/',name = 'classifier')
 
 tc_classification = np.where(atom_data.t_c > 0,1,0)
@@ -482,23 +486,34 @@ X_c,X_test_c,Y_c,Y_test_c = atom_data.train_test_split(X_c,Y_c,test_size = 0.2)
 
 classifier.fit_model(X_c,Y_c,X_val_c,Y_val_c,callbacks= callbacks,epochs=400,patience=20)
 
-Y_pred_r = regressor.predict(X_test_r)
+Y_pred_r = np.reshape(regressor.rho.predict(atom_data.dataset),(atom_data.t_c.shape[0],))
 
 threshold = 20
 
-outliers = np.abs(Y_pred_r - Y_test_r) > threshold
+Y_pred_r.shape
+atom_data.t_c.shape
 
-material_outliers_r = atom_data.dataset['material'][outliers]
-
-
-Y_pred_c = classifier.predict(X_test_c)
-
-false_pred = (Y_pred_c == Y_test_c)
-material_outliers_c = atom_data.dataset['material'][false_pred]
-
-material_outliers_c == material_outliers_r
+outliers = np.abs(Y_pred_r - atom_data.t_c) > threshold
+outliers
+material_outliers_r = sc_dataframe['material'][outliers].values
 
 
+Y_pred_c = np.reshape(classifier.rho.predict(atom_data.dataset),(atom_data.t_c.shape[0],))
+Y_pred_c = np.where(Y_pred_c>0.5,1,0)
 
+false_pred = (Y_pred_c != tc_classification)
+
+material_outliers_c = sc_dataframe['material'][false_pred].values
+
+material_outliers_c.shape
+material_outliers_r.shape
+
+common_wrong_pred = set(material_outliers_c).intersection(set(material_outliers_r))
+common_wrong_pred = list(common_wrong_pred)
+import csv
+with open('common_wrong_prediction.csv', mode='a') as csv_file:
+    csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+    for k in range(len(common_wrong_pred)):
+        csv_writer.writerow([common_wrong_pred[k]])
 #%%
 #Autoencoder
