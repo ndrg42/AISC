@@ -28,29 +28,10 @@ class DataProcessor():
 
     def get_input(self,compound):
         from mendeleev import element
+        from DataLoader import from_string_to_dict
 
-        num = ['0','1','2','3','4','5','6','7','8','9','.']
-        key=''
-        d= {}
-        value = ''
-        ok = False
-        compound = compound
-        for s in compound:
-            if s not in num:
-                if ok == True:
-                    d.update({key:float(value)})
-                    key = ''
-                    value = ''
-                    ok = False
-
-                key = key+s
-            if s in num:
-                value = value +s
-                ok = True
-        if ok == False:
-            d.update({key:1.0})
-        if ok == True:
-            d.update({key:float(value)})
+        d= []
+        from_string_to_dict(compound,d)
 
         input_dim = 33
         nulla = np.zeros(input_dim)
@@ -64,7 +45,7 @@ class DataProcessor():
 
         for j in range(self.max_lunghezza):
             if j < len(d):
-                entrata.append(np.array(self.Atom.loc[(element(list(d.keys())[j]).atomic_number -1)].append(pd.Series(list(d.values())[j]))))
+                entrata.append(np.array(self.Atom.loc[element(d[j][0]).atomic_number -1].append(pd.Series(float(d[j][1])))))
             else:
                 entrata.append(np.array(pd.Series(nulla)))
 
@@ -298,7 +279,7 @@ class DataProcessor():
         if tc == False:
             X = np.asarray(dataset)
         else:
-            self.t_c.to_csv(path +'dataset_label_elaborated.csv',index= False)
+            self.t_c.to_csv(path +name,index= False)
 
         try:
             m,n,r = X.shape
