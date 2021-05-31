@@ -39,16 +39,22 @@ class DeepSet():
     def build_phi(self):
 
         input_atom = Input(shape = (self.input_dim))
+        n_element = input_atom[0][-1:]
+        c = input_atom[0][:-1]
+        c = tf.reshape(c,[-1,self.input_dim-1])
         #x = BatchNormalization()(input_atom)
         #x = Dropout(0.5)(x)
-        x = Dense(300,activation = "relu")(input_atom)
+        x = Dense(300,activation = "relu")(c)
         #x = Dropout(0.5)(x)
         #x = BatchNormalization()(x)
         x = Dense(300,activation = "relu")(x)
         #x = Dropout(0.3)(x)
         x = Dense(300,activation = "relu")(x)
+        #x = Dropout(0.3)(x)
         y = Dense(self.latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
-
+        y = tf.math.multiply(y,n_element)
+        #y = tf.reshape(y,(tf.shape(input_atom)[0],self.latent_dim))
+        #y = tf.keras.layers.Lambda(lambda x: x*n_element)(y)
         self.phi = Model(inputs = input_atom,outputs = y)
 
 
@@ -64,6 +70,7 @@ class DeepSet():
         #y = Dropout(0.5)(y)
         y = Dense(300,activation = "relu")(y)
         #y = Dropout(0.5)(y)
+        y = Dense(300,activation = "relu")(y)
         y = Dense(300,activation = "relu")(y)
         #y = BatchNormalization()(y)
         y = Dense(100,activation = "relu")(y)
@@ -136,8 +143,8 @@ class DeepSet():
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                          loss='mse',
-                          metrics=[tf.keras.metrics.RootMeanSquaredError(),'mae'])
+                          loss='binary_crossentropy',
+                          metrics=[tf.keras.metrics.Precision(),'accuracy'])
 
         return model
 
@@ -175,7 +182,7 @@ class DeepSet():
 
         #activity_regularizer = hp.Choice('regularizer_rho',['l1','l2'])
         #output = Dense(1,activation = "sigmoid",activity_regularizer = activity_regularizer)(y)
-        output = Dense(1,activation = "linear",activity_regularizer = 'l2')(y)
+        output = Dense(1,activation = "sigmoid",activity_regularizer = 'l2')(y)
         rho = Model(inputs = inputs,outputs = output)
 
         return rho
