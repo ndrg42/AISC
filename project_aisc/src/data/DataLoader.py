@@ -281,6 +281,8 @@ def from_string_to_dict(string,lista):
 
                 else:
                     on = False
+                    if i+j == (len(string)-1):
+                        lista.append((string[i+j],'1'))
 
 
                     break
