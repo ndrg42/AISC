@@ -39,11 +39,8 @@ class DeepSet():
     def build_phi(self):
 
         input_atom = Input(shape = (self.input_dim))
-        n_element = input_atom[0][-1:]
-        c = input_atom[0][:-1]
-        c = tf.reshape(c,[-1,self.input_dim-1])
-        #x = BatchNormalization()(input_atom)
-        #x = Dropout(0.5)(x)
+        n_element = input_atom[:,-1:]
+        c = input_atom[:,:-1]
         x = Dense(300,activation = "relu")(c)
         #x = Dropout(0.5)(x)
         #x = BatchNormalization()(x)
