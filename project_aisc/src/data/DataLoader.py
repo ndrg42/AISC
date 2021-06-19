@@ -120,7 +120,7 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
 
 
 
-def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = False):
+def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
     """Create a dataset of superconductor and non-superconducting materials
 
     Args:
@@ -212,6 +212,8 @@ def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = F
     element_list = list(sc_dict.keys())
     element_list = element_list[:-2]
     element_list = set(element_list)
+    if normalized:
+        tupl_atom = normalize_formula(tupl_atom)
     #create a dictionary with the quantity of each element on the molecules and relative chemical formula and critical temperature
     for i in range(supercon['formula'].shape[0]):
 
@@ -220,6 +222,8 @@ def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = F
         sc_dict['critical_temp'].append(float(supercon['tc'][i]))
         tupl_atom = []
         from_string_to_dict(sc_string,tupl_atom)
+        if normalized:
+            tupl_atom = normalize_formula(tupl_atom)
         list_atom = []
         for j in range(len(tupl_atom)):
             list_atom.append(tupl_atom[j][0])
