@@ -79,7 +79,7 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
 
     import numpy as np
 
-    path = "/home/claudio/AISC/project_aisc/data/raw/"
+    path = "../../data/raw/"
     periodic_table = pd.DataFrame(periodic_table)
     thermal_conductivity = pd.read_csv(path+"thermal_conductivity.csv",header=None)
 
@@ -296,3 +296,15 @@ def from_string_to_dict(string,lista):
     if i+j < len(string) and string[i+j-1] != nums :
         string = string[i+j-1:]
         from_string_to_dict(string,lista)
+
+
+def normalize_formula(lista):
+    """ Normalize quantity of chemical formula to 100 unit size cell """
+
+    dict_chemical = {symbol: float(quantity) for symbol, quantity in lista}
+    n_atoms = sum(list(dict_chemical.values()))
+    factor = 100.0/n_atoms
+
+    lista_normalized = [(symbol,str(round(factor*float(quantity),1))) for symbol, quantity in lista]
+
+    return lista_normalized
