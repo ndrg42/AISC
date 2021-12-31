@@ -12,6 +12,8 @@ from DataLoader import SuperCon
 #TO DO list for DataLoader:
 #is a Dataframe?-> right type
 #is in the correct format? -> chemical elements, formula,critical temperature
+#critical temperature is always a number?
+#test equivalence formula as sting and splitted formula in columns
 
 test_path = 'data/raw/supercon_tot.csv'
 
@@ -35,3 +37,8 @@ def test_supercon_chemical_elements(test_path = test_path):
             pass
 
     assert supercon_columns == chemical_element[:96]
+
+def test_supercon_critical_temperature(test_path=test_path):
+    """"test critical temperature is a number"""
+
+    assert SuperCon(test_path).loc[:,'critical_temp'].dtype == 'float64'
