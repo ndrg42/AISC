@@ -1,7 +1,28 @@
 
 import pandas as pd
+import numpy as np
 from mendeleev import element
+from mendeleev import get_table
+import sys
+sys.path.append('src/features')
+import DataLoader
+from Processing import remove_columns_with_missing_elements
 
+
+#DataLoader.py rename into make_dataset.py
+#deve contenere solo routine per generare/scaricare/caricare nel giusto formato
+#i dati raw
+
+#SuperCon -> cambio nome in accordo con standard python get_supercon
+#PeriodicTable ->troppo lungo, fa troppe cose.
+#    troppi elementi mancanti -> funzione a se
+#    caricare altri dataset singoli - funzione a parte
+#    merge i dataset -> funzione a parte
+#CreateSuperCon -> rename ed uso di chela(per ora da cambiare la string formula in material, da valutare poi)
+#from_string_to_dict -> da cancellare, non serve più. è spostato nel pacchetto chela
+#normalize_formula -> va spostato in features
+
+#Change name according python standard
 def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
     """
     carica un dataset con gli atomi che compongono i materiali superconduttori e la loro temperatura critica
@@ -29,57 +50,38 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
     output:
           dataset
     """
-    from mendeleev import get_table
 
 
     periodic_table = get_table('elements')
     #max_index_atom = 109
     #max_missing_value = 30
     #PROVA: TOLGO "en_pauling","group_id","evaporation_heat"
-    prop_atomic_unn = ['annotation','description','name','jmol_color','symbol','is_radioactive','vdw_radius_mm3',
+    atomic_features_to_drop = ['annotation','description','name','jmol_color','symbol','is_radioactive','vdw_radius_mm3',
                            'cpk_color','uses','sources','name_origin','discovery_location','covalent_radius_cordero',
                            'discoverers','cas','goldschmidt_class','molcas_gv_color','discovery_year','atomic_radius','series_id',
                            'electronic_configuration','glawe_number','en_ghosh','heat_of_formation','covalent_radius_pyykko_double',
                            'vdw_radius_alvarez','abundance_crust', 'abundance_sea', 'c6_gb','vdw_radius_uff',
                            'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number']
 
-    ionenergies_col= []
-#non è disponibile il dato per i maggiore di 109
-    for i in range(1,max_index_atom):
-        el = element(i)
-        el = el.ionenergies[1]
-        ionenergies_col.append(el)
+    #There isn't data for elements heavier than 109
+    ionenergies_col = [element(index).ionenergies[1] for index in range(1,max_index_atom)]
+    valence_col = [element(index).nvalence() for index in range(1,max_index_atom)]
 
-    valence_col = []
-    for i in range(1,max_index_atom):
-        el = element(i)
-        el = el.nvalence()
-        valence_col.append(el)
-
-    periodic_table.drop(prop_atomic_unn,axis = 1,inplace=True)
+    periodic_table = periodic_table.drop(atomic_features_to_drop,axis = 1)
     periodic_table = periodic_table[:(max_index_atom-1)]
 
     periodic_table['valence'] = valence_col
     periodic_table['ionenergies'] = ionenergies_col
 
 
-    periodic_table.shape
-    col_vuote = []
-    mancanti = periodic_table.isna().sum()
-    for i in range(mancanti.size):
-        if mancanti[i] >= max_missing_value:
-            col_vuote.append(mancanti.index[i])
+    exceptions = ['thermal_conductivity','fusion_heat','electron_affinity']
+    periodic_table = remove_columns_with_missing_elements(dataset = periodic_table,max_missing_value=max_missing_value,exceptions = exceptions)
 
-
-    col_vuote.remove('thermal_conductivity')
-    col_vuote.remove('fusion_heat')
-    col_vuote.remove('electron_affinity')
-    periodic_table.drop(col_vuote,axis = 1,inplace=True)
     periodic_table = periodic_table[:96]
 
     import numpy as np
-
-    path = "../../data/raw/"
+    #../../
+    path = "data/raw/"
     periodic_table = pd.DataFrame(periodic_table)
     thermal_conductivity = pd.read_csv(path+"thermal_conductivity.csv",header=None)
 
@@ -119,7 +121,6 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
     return periodic_table
 
 
-
 def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
     """Create a dataset of superconductor and non-superconducting materials
 
@@ -128,8 +129,10 @@ def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = F
         name (str): the name of the saved file (default is supercon_tot.csv)
     """
     #read data in a column separed format
-    supercon = pd.read_csv('../../data/raw/SuperCon_database.dat',delimiter = r"\s+",names = ['formula','tc'])
-    #supercon = pd.read_csv('../../data/raw/supercon_material_temp.csv')
+    #supercon = pd.read_csv('../../data/raw/SuperCon_database.dat',delimiter = r"\s+",names = ['formula','tc'])
+    supercon = pd.read_csv('../../data/raw/supercon_garbage.csv',names=['formula','tc'])
+    supercon.drop(0,inplace=True)
+    supercon['tc'] = supercon['tc'].astype(float)
     #supercon.rename(columns = {'material':'formula','critical_temp':'tc'},inplace=True)
     #remove rows with nan value on tc
     supercon = supercon.dropna()

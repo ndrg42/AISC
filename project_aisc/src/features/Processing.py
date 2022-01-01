@@ -357,3 +357,16 @@ class DataProcessor():
         x = abs(med - np.average(med,weights = perc))**2
         std = np.sqrt(np.average(x,weights = perc))
         return std
+
+
+def remove_columns_with_missing_elements(dataset, exceptions, max_missing_value = 30):
+    """remove columns that has more than max_missing_value with expection for except columns"""
+
+    empty_columns = [column for column in dataset.columns if dataset[column].isna().sum()> max_missing_value]
+
+    #remove from the list exceptional columns even if they have too much missing values
+    if exceptions:
+        for column in exceptions:
+            empty_columns.remove(column)
+
+    return dataset.drop(columns = empty_columns)
