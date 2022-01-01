@@ -77,59 +77,47 @@ def PeriodicTable(max_atomic_number=96,max_missing_value=30):
 
     exceptions = ['thermal_conductivity','fusion_heat','electron_affinity']
     periodic_table = remove_columns_with_missing_elements(dataset = periodic_table,
-                                                          exceptions = exceptions,
+                                                          exceptions = [],
+                                                          max_missing_value=30,
                                                           )
-    # max_missing_value = 30
-    # for i in range(mancanti.size):
-    #     if mancanti[i] >= max_missing_value:
-    #         col_vuote.append(mancanti.index[i])
-    #
-    #
-    # col_vuote.remove('thermal_conductivity')
-    # col_vuote.remove('fusion_heat')
-    # col_vuote.remove('electron_affinity')
-    # periodic_table.drop(col_vuote,axis = 1,inplace=True)
-    # periodic_table = periodic_table.iloc[:96,:]
 
-
-    import numpy as np
     #../../
     path = "data/raw/"
-    periodic_table = pd.DataFrame(periodic_table)
-    thermal_conductivity = pd.read_csv(path+"thermal_conductivity.csv",header=None)
+    features = ['thermal_conductivity','specific_heat','electron_affinity','density']
+    features_and_scale = {'thermal_conductivity':1,'specific_heat':1/1000,'electron_affinity': 1/100,'density':1/1000}
 
-    thermal_conductivity.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan,inplace=True)
-    thermal_conductivity.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan,inplace=True)
+    atomic_dataset_dict = get_external_periodic_table_data(path = path, features = features)
 
-    specific_heat = pd.read_csv(path+"specific_heat.csv",header = None)
 
-    specific_heat.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan,inplace=True)
-    specific_heat.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan,inplace=True)
+    periodic_table = merge_periodic_table_data(features_and_scale=features_and_scale,
+                                               atomic_dataset_dict= atomic_dataset_dict,
+                                               periodic_table= periodic_table)
 
-    electron_affinity = pd.read_csv(path+"electron_affinity.csv",header=None)
+    return periodic_table
 
-    electron_affinity.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan,inplace=True)
-    electron_affinity.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan,inplace=True)
+def get_external_periodic_table_data(path,features):
+    """Load a list of pandas DataFrame containing single atomic features"""
 
-    density = pd.read_csv(path+"density.csv",header=None)
+    #These Dataset are meant to be merged with periodic table data from mendeleev software
+    #They have no header and contain only a single atomic feature
+    #There is a specific clean process where we replace some strings (they indicate no avaible data) with Nan value
+    atomic_dataset_list = [pd.read_csv(path+feature+'.csv',header=0) for feature in features]
 
-    density.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan,inplace=True)
-    density.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan,inplace=True)
+    atomic_dataset_list = list(map(lambda x: x.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan),atomic_dataset_list))
+    atomic_dataset_list = list(map(lambda x: x.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan),atomic_dataset_list))
 
-    for i in range(96):
+    #turn the list into a dictionary to be more manageable
+    atomic_dataset_dict = {feature:atomic_dataset_list[index] for index,feature in enumerate(features)}
 
-        if periodic_table["thermal_conductivity"].isna()[i]:
-           periodic_table.loc[i,"thermal_conductivity"] =thermal_conductivity.astype('float32').values[i]
+    return atomic_dataset_dict
 
-        if periodic_table["specific_heat"].isna()[i]:
-            periodic_table.loc[i,"specific_heat"] = specific_heat.astype('float32').values[i]/1000
 
-        if periodic_table["electron_affinity"].isna()[i]:
-            periodic_table.loc[i,"electron_affinity"] = electron_affinity.astype('float32').values[i]/100
+def merge_periodic_table_data(features_and_scale,atomic_dataset_dict,periodic_table):
+    """Merge periodic table from get_external_periodic_table_data (and scale them) and mendeleev data"""
 
-        if periodic_table["density"].isna()[i]:
-            periodic_table.loc[i,"density"] = density.astype('float32').values[i]/1000
-
+    for feature in features_and_scale.keys():
+        scaled_feature = atomic_dataset_dict[feature][feature].astype('float32')*features_and_scale[feature]
+        periodic_table[feature] = periodic_table[feature].fillna(scaled_feature)
 
     return periodic_table
 
