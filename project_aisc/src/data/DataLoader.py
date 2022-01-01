@@ -35,7 +35,7 @@ def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
     return sc_dataframe
 
 
-def PeriodicTable(max_index_atom=109,max_missing_value=30):
+def PeriodicTable(max_atomic_number=96,max_missing_value=30):
     """
     carica i dataset dei composti superconduttori e la tavola periodica
     features atomiche disponibili:'atomic_number', 'atomic_volume', 'block', 'density',
@@ -53,31 +53,44 @@ def PeriodicTable(max_index_atom=109,max_missing_value=30):
 
 
     periodic_table = get_table('elements')
-    #max_index_atom = 109
-    #max_missing_value = 30
+    periodic_table = periodic_table.iloc[:max_atomic_number,:]
+
+
     #PROVA: TOLGO "en_pauling","group_id","evaporation_heat"
     atomic_features_to_drop = ['annotation','description','name','jmol_color','symbol','is_radioactive','vdw_radius_mm3',
                            'cpk_color','uses','sources','name_origin','discovery_location','covalent_radius_cordero',
                            'discoverers','cas','goldschmidt_class','molcas_gv_color','discovery_year','atomic_radius','series_id',
                            'electronic_configuration','glawe_number','en_ghosh','heat_of_formation','covalent_radius_pyykko_double',
                            'vdw_radius_alvarez','abundance_crust', 'abundance_sea', 'c6_gb','vdw_radius_uff',
-                           'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number']
+                           'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number','geochemical_class',
+                           'covalent_radius_pyykko_triple', 'en_allen','atomic_weight_uncertainty']
 
     #There isn't data for elements heavier than 109
-    ionenergies_col = [element(index).ionenergies[1] for index in range(1,max_index_atom)]
-    valence_col = [element(index).nvalence() for index in range(1,max_index_atom)]
+    ionenergies_col = [element(index).ionenergies[1] for index in range(1,max_atomic_number+1)]
+    valence_col = [element(index).nvalence() for index in range(1,max_atomic_number+1)]
 
     periodic_table = periodic_table.drop(atomic_features_to_drop,axis = 1)
-    periodic_table = periodic_table[:(max_index_atom-1)]
 
     periodic_table['valence'] = valence_col
     periodic_table['ionenergies'] = ionenergies_col
 
 
     exceptions = ['thermal_conductivity','fusion_heat','electron_affinity']
-    periodic_table = remove_columns_with_missing_elements(dataset = periodic_table,max_missing_value=max_missing_value,exceptions = exceptions)
+    periodic_table = remove_columns_with_missing_elements(dataset = periodic_table,
+                                                          exceptions = exceptions,
+                                                          )
+    # max_missing_value = 30
+    # for i in range(mancanti.size):
+    #     if mancanti[i] >= max_missing_value:
+    #         col_vuote.append(mancanti.index[i])
+    #
+    #
+    # col_vuote.remove('thermal_conductivity')
+    # col_vuote.remove('fusion_heat')
+    # col_vuote.remove('electron_affinity')
+    # periodic_table.drop(col_vuote,axis = 1,inplace=True)
+    # periodic_table = periodic_table.iloc[:96,:]
 
-    periodic_table = periodic_table[:96]
 
     import numpy as np
     #../../
