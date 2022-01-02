@@ -8,7 +8,8 @@
 
     PeriodicTable test:
         type check for output: expected Pandas DataFrame
-        correct format for dataframe: expected chemical symbols in the columns (up to atomic number =96)
+        check number of elements in the dataframe: expected chemical symbols 96
+        equal refactored output with old alredy checked output: works if columns are 22/delete if you add other data
 
 """
 
@@ -16,7 +17,7 @@
 import os
 os.getcwd()
 import sys
-sys.path.append('src/data')
+sys.path.append('/home/claudio/AISC/project_aisc/src/data/')
 
 #module needed for test or to test
 import pytest
@@ -27,8 +28,11 @@ import chela
 
 from DataLoader import SuperCon
 from DataLoader import PeriodicTable
+from DataLoader import CreateSuperCon
 
 test_path = 'data/raw/supercon_tot.csv'
+
+#TEST on SuperCon------------------------------------------------------------------
 
 def test_supercon_type(test_path=test_path):
     """test supercon output type"""
@@ -72,168 +76,183 @@ def test_supercon_correct_splitted_formula_on_columns(test_path=test_path,number
 
     assert ((super_con.iloc[random_int,:-2].reset_index(drop=True) - converted_formulas)<0.001).all(axis=1).all()
 
+#TEST on PeriodicTable-----------------------------------------------------------
+#%%
+#
+# from DataLoader import from_string_to_dict,normalize_formula
+#
+# def CreateSuperCon(material=False,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
+#     """Create a dataset of superconductor and non-superconducting materials
+#
+#     Args:
+#         material (bool): a flag used to indicate if keep or not the material column
+#         name (str): the name of the saved file (default is supercon_tot.csv)
+#     """
+#     #read data in a column separed format
+#     supercon = pd.read_csv('data/raw/SuperCon_database.dat',delimiter = r"\s+",names = ['formula','tc'])
+#     #supercon = pd.read_csv('data/raw/supercon_garbage.csv',names=['formula','tc'])
+#     supercon.drop(0,inplace=True)
+#     supercon['tc'] = supercon['tc'].astype(float)
+#     #supercon.rename(columns = {'material':'formula','critical_temp':'tc'},inplace=True)
+#     #remove rows with nan value on tc
+#     supercon = supercon.dropna()
+#     #get duplicated row aggregating them with mean value on critical temperature
+#     duplicated_row = supercon[supercon.duplicated(subset = ['formula'],keep = False)].groupby('formula').aggregate({'tc':'mean'}).reset_index()
+#     #drop all the duplicated row
+#     supercon.drop_duplicates(subset = ['formula'],inplace = True,keep = False)
+#     #compose the entire dataset
+#     supercon= supercon.append(duplicated_row,ignore_index=True)
+#     #initialize a dictionary with element symbol,critical_temp,material as keys
+#     sc_dict={}
+#     num_element = 96
+#     for i in range(1,num_element+1):
+#         sc_dict[element(i).symbol] = []
+#
+#     sc_dict['material'] = []
+#     sc_dict['critical_temp'] = []
+#     #list with all the element symbol
+#     list_element = list(sc_dict.keys())[:num_element]
+#     #search element that are put more than one time in a formula
+#     repeted_values = []
+#     list_heavy_element = list_element[86:96]
+#     heavy_element = []
+#     wrong_element = []
+#     wrong_coef = []
+#     zero_element = []
+#     for i in range(supercon['formula'].shape[0]):
+#
+#         sc_string = supercon['formula'][i]
+#         tupl_atom = []
+#         from_string_to_dict(sc_string,tupl_atom)
+#         list_atom = []
+#         for j in range(len(tupl_atom)):
+#             list_atom.append(tupl_atom[j][0])
+#
+#             if float(tupl_atom[j][1]) > 150:
+#                 wrong_coef.append(i)
+#
+#
+#             if float(tupl_atom[j][1]) == 0:
+#                 zero_element.append(i)
+#
+#             if tupl_atom[j][0] not in list_element:
+#                 wrong_element.append(i)
+#
+#             if tupl_atom[j][0] in list_heavy_element:
+#                 heavy_element.append(i)
+#                 break
+#
+#         if len(list(set(list_atom))) != len(list_atom):
+#
+#             repeted_values.append(i)
+#     #drop repeted element and reset index
+#     row_to_drop = []
+#     if  drop_heavy_element:
+#         row_to_drop = repeted_values + heavy_element + wrong_element + wrong_coef + zero_element
+#         num_element = 86
+#     else:
+#         row_to_drop = repeted_values + wrong_element + wrong_coef+ zero_element
+#         num_element = 96
+#
+#     row_to_drop = list(set(row_to_drop))
+#     supercon.drop(row_to_drop,inplace = True)
+#     # supercon.drop(repeted_values,inplace=True)
+#     # supercon.drop(heavy_element,inplace=True)
+#     # print(len(wrong_element))
+#     # supercon.drop(wrong_element,inplace = True)
+#     supercon.reset_index(drop= True, inplace=True)
+#
+#     sc_dict={}
+#     #num_element = 86
+#     for i in range(1,num_element+1):
+#         sc_dict[element(i).symbol] = []
+#
+#     sc_dict['critical_temp'] = []
+#     sc_dict['material'] = []
+#
+#
+#     #list with the elements symbol
+#     element_list = list(sc_dict.keys())
+#     element_list = element_list[:-2]
+#     element_list = set(element_list)
+#     if normalized:
+#         tupl_atom = normalize_formula(tupl_atom)
+#     #create a dictionary with the quantity of each element on the molecules and relative chemical formula and critical temperature
+#     for i in range(supercon['formula'].shape[0]):
+#
+#         sc_string = supercon['formula'][i]
+#         sc_dict['material'].append(sc_string)
+#         sc_dict['critical_temp'].append(float(supercon['tc'][i]))
+#         tupl_atom = []
+#         from_string_to_dict(sc_string,tupl_atom)
+#         if normalized:
+#             tupl_atom = normalize_formula(tupl_atom)
+#         list_atom = []
+#         for j in range(len(tupl_atom)):
+#             list_atom.append(tupl_atom[j][0])
+#
+#             if tupl_atom[j][0] in list_element:
+#                 sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
+#
+#         element_not_present = element_list - (set(list_atom))
+#
+#         for el in element_not_present:
+#             sc_dict[el].append(0.0)
+#
+#     sc_dataframe = pd.DataFrame(sc_dict)
+#     if not material:
+#         sc_dataframe.drop(axis=1,inplace=True,columns=['material'])
+#     return sc_dataframe
+#
 # #%%
-# import mendeleev
-#
-# periodic_table = mendeleev.get_table('elements')
-# periodic_table.shape
-# col_vuote = []
-# mancanti = periodic_table.isna().sum()
-# max_missing_value = 30
-# for i in range(mancanti.size):
-#     if mancanti[i] >= max_missing_value:
-#         col_vuote.append(mancanti.index[i])
-#
-# col_vuote
-# periodic_table.columns
-# col_vuote.remove('thermal_conductivity')
-# col_vuote.remove('fusion_heat')
-# col_vuote.remove('electron_affinity')
-# periodic_table.drop(col_vuote,axis = 1,inplace=True)
-# periodic_table = periodic_table.iloc[:96,:]
-#
-#
-#
-# path = "data/raw/"
-# thermal_conductivity = pd.read_csv(path+"LatticeConstants.csv",header=None)
-#
-# thermal_conductivity.replace('QuantityMagnitude[Missing["NotAvailable"]]',np.nan,inplace=True)
-# thermal_conductivity.replace('QuantityMagnitude[Missing["Unknown"]]',np.nan,inplace=True)
-#
-# thermal_conductivity_periodic_table = periodic_table.loc[:,'fusion_heat']
-# thermal_conductivity
-#
-# thermal_conductivity_periodic_table.isna().sum()
-#
-# thermal_conductivity[thermal_conductivity[0].isna()]
-# thermal_conductivity_periodic_table
-# thermal_conductivity_periodic_table[thermal_conductivity_periodic_table['fusion_heat'].isna()]
-#
-# thermal_conductivity_periodic_table.isna().sum()
-# thermal_conductivity.isna().sum()
-#
-# thermal_conductivity_periodic_table.fillna(thermal_conductivity[0])
-#
-# periodic_table
-# #%%
-#
-# periodic_table = mendeleev.get_table('elements')
-# max_index_atom = 109
-# max_missing_value = 30
-# #PROVA: TOLGO "en_pauling","group_id","evaporation_heat"
-# atomic_features_to_drop = ['annotation','description','name','jmol_color','symbol','is_radioactive','vdw_radius_mm3',
-#                        'cpk_color','uses','sources','name_origin','discovery_location','covalent_radius_cordero',
-#                        'discoverers','cas','goldschmidt_class','molcas_gv_color','discovery_year','atomic_radius','series_id',
-#                        'electronic_configuration','glawe_number','en_ghosh','heat_of_formation','covalent_radius_pyykko_double',
-#                        'vdw_radius_alvarez','abundance_crust', 'abundance_sea', 'c6_gb','vdw_radius_uff',
-#                        'dipole_polarizability_unc','boiling_point','pettifor_number','mendeleev_number']
-#
-# #There isn't data for elements heavier than 109
-# ionenergies_col = [element(index).ionenergies[1] for index in range(1,max_index_atom)]
-# valence_col = [element(index).nvalence() for index in range(1,max_index_atom)]
-#
-# periodic_table = periodic_table.drop(atomic_features_to_drop,axis = 1)
-# periodic_table = periodic_table[:(max_index_atom-1)]
-#
-# periodic_table['valence'] = valence_col
-# periodic_table['ionenergies'] = ionenergies_col
-# periodic_table = periodic_table[:96]
-# #
-# #
-#
-# dataset = periodic_table
-# empty_columns = [column for column in dataset.columns if dataset[column].isna().sum()> max_missing_value]
-# empty_columns
-#
-# exceptions
-# #remove from the list exceptional columns even if they have too many missing values
-# if exceptions:
-#     for column in exceptions:
-#         if column in empty_columns:
-#             empty_columns.remove(column)
-#
-# empty_columns
+# import chela
+# chela.__version__
 # import importlib
-# importlib.reload(DataLoader)
+# import DataLoader
+# importlib.reload(chela)
+# from DataLoader import CreateSuperCon
 #
-# DataLoader.PeriodicTable().isna().sum()
+# b = chela.csv_to_dataframe('data/raw/SuperCon_database.csv',header = True)
+# a = DataLoader.CreateSuperCon(material=True)
 #
-# geochemical_class
-# covalent_radius_pyykko_triple
-# en_allen
+# c = ((b.iloc[:,:96]- a.iloc[:,96])<0.01)
 #
-# periodic_table_correct = pd.read_csv('data/processed/periodic_table.csv',index_col=0)
-# periodic_table_numeric_correct = periodic_table_correct.select_dtypes(include=numerics).replace(np.nan,0)
-# periodic_table_correct.isna().sum()
-
-# periodic_table.shape
-# col_vuote = []
-# mancanti = periodic_table.isna().sum()
-# for i in range(mancanti.size):
-#     if mancanti[i] >= max_missing_value:
-#         col_vuote.append(mancanti.index[i])
+# c = a.iloc[:,:96]- b.iloc[:,:96]
 #
-# dataset['en_allen'].isna().sum()
-# mancanti
-# empyt_columns
+# (c<0.01).all().all()
+# c.all().all()
 #
+# a
+# a.loc[:,['material','critical_temp']]#.to_csv('data/raw/SuperCon_database.csv',index = False)
+# b
+# b = b.drop([0])
+# b.iloc[0:5,96:118].columns
+# b = b.drop(axis = 0,columns = b.iloc[0:5,96:118].columns)
+# c = b - a
+# b = b.reset_index(drop=True)
+# b =
 #
-# dataset= periodic_table
-# dataset['fusion_heat'].isna().sum()
-# empyt_columns = [column for column in dataset.columns if dataset[column].isna().sum()> max_missing_value]
-# empyt_columns = [column for column in dataset.columns if dataset[column].isna().sum()]
+# b = b.rename(columns = {'critical_temp':'tc','formula':'material'})
+# a.loc[0,['material','K']]
 #
-# periodic_table['thermal_conductivity'].isna().sum()
+# b
+# b.loc[19140,['material','Zr','S','Se']]
 #
-# empyt_columns
+# b['material']
+# chela.from_string_to_dict(b.loc[0,'material'])
+# b.loc[0,['material','K']]
 #
-# def remove_columns_with_missing_elements(dataset = dataset,max_missing_value = 30, exceptions= exceptions):
-#    """remove columns that has more than max_missing_value with expection for except columns"""
-#
-#    empty_columns = [column for column in dataset.columns if dataset[column].isna().sum()> max_missing_value]
-#
-#    #remove from the list exceptional columns even if they have too much missing values
-#    if exceptions:
-#        for column in exceptions:
-#            empty_columns.remove(column)
-#
-#     return dataset.drop(empty_columns,axis = 1)
-#
-#
-#
-# col_vuote
-# col_vuote.remove('thermal_conductivity')
-# col_vuote.remove('fusion_heat')
-# col_vuote.remove('electron_affinity')
-# periodic_table.drop(col_vuote,axis = 1,inplace=True)
-# periodic_table = periodic_table[:96]
-#
-# periodic_table['specific_heat']#.isna().sum()
-#
-# thermal_conductivity[2].iloc[6].astype('float64')/100
-#DataLoader.PeriodicTable()
-#%%
-# numerics = ['int16','int32','int64','float16','float32','float64']
-#
-# periodic_table_correct = pd.read_csv('data/processed/periodic_table.csv',index_col=0)
-# periodic_table_numeric_correct = periodic_table_correct.select_dtypes(include=numerics).replace(np.nan,0)
-#
-# periodic_table_numeric = DataLoader.PeriodicTable().select_dtypes(include=numerics).replace(np.nan,0)
-#
-# ((periodic_table_numeric_correct - periodic_table_numeric) <0.001).all(axis=1).all()
-#
-# periodic_table_numeric
+# b.loc[:,['S','Se','K']]
+# rand_int = np.random.randint(0,a.shape[0],10000)
+# a.rename(columns = {'tc':'critical_temp','material':'formula'}).iloc[rand_int,:].drop(columns = ['critical_temp'])#.to_csv('10000_chemical_formulas_checked.csv',index=False)
 
 #%%
-import importlib
-#importlib.reload(DataLoader)
-
-import DataLoader
 
 def test_periodic_table_type():
     """test periodic table  output type"""
 
     assert isinstance(PeriodicTable(), type(pd.DataFrame()))
+
 
 def test_periodic_table_numeric_output():
     """test periodic table format with one alredy controlled"""
@@ -254,3 +273,13 @@ def test_number_rows_periodic_table():
     number_of_rows = PeriodicTable().shape[0]
 
     assert number_of_rows == 96
+
+
+#TEST on CreateSuperCon----------------------------------------------------------
+
+test_path = 'data/raw/SuperCon_database.csv'
+
+def test_create_supercon_type(test_path=test_path):
+    """test create_supercon output type"""
+
+    assert isinstance(CreateSuperCon(test_path), type(pd.DataFrame()))
