@@ -283,3 +283,20 @@ def test_create_supercon_type(test_path=test_path):
     """test create_supercon output type"""
 
     assert isinstance(CreateSuperCon(test_path), type(pd.DataFrame()))
+
+def test_create_supercon_elements(test_path=test_path):
+    """Check the presence of atomic symbols up to 96"""
+
+    sc_dataset = CreateSuperCon(test_path)
+
+    chemical_element = ['H', 'He', 'Li', 'Be', 'B', 'C', 'N', 'O', 'F', 'Ne', 'Na', 'Mg', 'Al', 'Si', 'P', 'S', 'Cl', 'Ar', 'K', 'Ca', 'Sc', 'Ti', 'V', 'Cr', 'Mn', 'Fe', 'Co', 'Ni', 'Cu', 'Zn', 'Ga', 'Ge', 'As', 'Se', 'Br', 'Kr', 'Rb', 'Sr', 'Y', 'Zr', 'Nb', 'Mo', 'Tc', 'Ru', 'Rh', 'Pd', 'Ag', 'Cd', 'In', 'Sn', 'Sb', 'Te', 'I', 'Xe', 'Cs', 'Ba', 'La', 'Ce', 'Pr', 'Nd', 'Pm', 'Sm', 'Eu', 'Gd', 'Tb', 'Dy', 'Ho', 'Er', 'Tm', 'Yb', 'Lu', 'Hf', 'Ta', 'W', 'Re', 'Os', 'Ir', 'Pt', 'Au', 'Hg', 'Tl', 'Pb', 'Bi', 'Po', 'At', 'Rn', 'Fr', 'Ra', 'Ac', 'Th', 'Pa', 'U', 'Np', 'Pu', 'Am', 'Cm', 'Bk', 'Cf', 'Es', 'Fm', 'Md', 'No', 'Lr', 'Rf', 'Db', 'Sg', 'Bh', 'Hs', 'Mt', 'Ds', 'Rg', 'Cn', 'Nh', 'Fl', 'Mc', 'Lv', 'Ts', 'Og']
+
+    #Last 2 columns are the chemical formulas and the critical temperature
+    sc_chemical_elements = sc_dataset.columns[:-2]
+
+    assert len(chemical_element[:96]) == len(sc_chemical_elements)
+
+def test_create_supercon_critical_temperature(test_path=test_path):
+    """"test critical temperature is a number"""
+
+    assert CreateSuperCon(test_path).loc[:,'critical_temp'].dtype == 'float64'
