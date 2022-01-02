@@ -1,16 +1,21 @@
 """module with test for DataLoader. Routine tested SuperCon
 
-    SuperCon test:
+    SuperCon tests:
         type check for output: expected Pandas DataFrame
         correct format for dataframe: expected chemical symbols in the columns (up to atomic number =96)
         type check for critical temperature: expected float64
         check the correct formation of the dataset from the formula (string)
 
-    PeriodicTable test:
+    PeriodicTable tests:
         type check for output: expected Pandas DataFrame
         check number of elements in the dataframe: expected chemical symbols 96
         equal refactored output with old alredy checked output: works if columns are 22/delete if you add other data
 
+    CreateSuperCon tests:
+        type check for output: expected Pandas DataFrame
+        check number of elements in the dataframe: expected chemical symbols 96
+        type check for critical temperature: expected float64
+        check last 2 labels: expected ['critical_temp''material']
 """
 
 #configuration setting for test
@@ -300,3 +305,11 @@ def test_create_supercon_critical_temperature(test_path=test_path):
     """"test critical temperature is a number"""
 
     assert CreateSuperCon(test_path).loc[:,'critical_temp'].dtype == 'float64'
+
+def test_create_supercon_labels(test_path=test_path):
+    """"Check the last 2 labels are material and critical temp for compatibility
+        iusse with other part of the programm
+    """
+    last_two_names = CreateSuperCon(test_path).columns[-2:]
+
+    assert (last_two_names == ['critical_temp','material']).all()
