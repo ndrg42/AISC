@@ -13,7 +13,109 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split
 import sys
 sys.path.append('../data')
-import DataLoader
+#import DataLoader
+
+class AtomData():
+    """Classe per tenere e processare i dati atomici per renderli pronti come
+        materiale per l'input per il modello.
+
+        periodic_table contiene i dati atomici non processati
+        atom_data contiene i dati già processati e pronti per l'utilizzo
+
+
+    """
+    
+    def __init__(self,periodic_table):
+
+        self.periodic_table = periodic_table
+        self.atom_data = None
+
+    def one_hot_encode(self,atomic_feature):
+
+        one_hot_encoder = OneHotEncoder(handle_unknown='ignore', sparse=False)
+        uncoded_atomic_feature = np.array(self.periodic_table[atomic_feature].fillna(value='Void')).reshape(-1,1)
+        one_hot_feature_encoded = pd.DataFrame(one_hot_encoder.fit_transform(uncoded_atomic_feature))
+
+        # One-hot encoding removed index; put it back
+        one_hot_feature_encoded.index = self.periodic_table.index
+
+        return one_hot_feature_encoded
+
+    def natural_encode(self,atomic_feature,atomic_map):
+
+        # atomci_feature = 'block'
+        # atomic_map = { 's': 0,'p' : 1,'d' : 2,'f' : 3}
+        natural_feature_encoded = self.periodic_table[atomic_feature].map(atomic_map)
+
+        return natural_feature_encoded
+
+
+
+    def get_categorical_data_processed(self,categorical_encode_plan = {'lattice_structure':'one-hot','block':{ 's': 0,'p' : 1,'d' : 2,'f' : 3}}):
+        """Return categorical data encoded"""
+
+        categorical_dataset_list = []
+
+        for categorical_feature in categorical_encode_plan.keys():
+            if categorical_encode_plan[categorical_feature] == 'one-hot':
+                categorical_dataset_list.append(self.one_hot_encode(categorical_feature))
+            else:
+                categorical_dataset_list.append(self.natural_encode(atomic_feature=categorical_feature,atomic_map=categorical_encode_plan[categorical_feature]))
+
+        categorical_dataset = pd.concat(categorical_dataset_list, axis=1)
+
+        return categorical_dataset
+
+
+    def get_numerical_data_processed(self,numerical_columns):
+
+
+        numeric_periodic_table = self.periodic_table[numerical_columns].copy()
+        # Imputation
+        my_imputer = SimpleImputer(strategy='mean')
+
+        transformer = preprocessing.StandardScaler()
+        imputed_periodic_table = pd.DataFrame(my_imputer.fit_transform(numeric_periodic_table))
+        imputed_standardized_periodic_table = pd.DataFrame(transformer.fit_transform(imputed_periodic_table))
+
+
+        # Imputation removed column names; put them back
+        imputed_standardized_periodic_table.columns = numeric_periodic_table.columns
+
+        return imputed_standardized_periodic_table
+
+
+
+
+    def build_atom_data(self):
+        """
+        dataset contenente i dati della tavola periodica processati, ovvero normalizzati ed Imputation
+        i dati numeri sono normalizzati rispetto al valore massimo ed imputati con la media
+        i dati categorici sono: la struttura cristallina, codificata tramite one hot encoding, ed il guscio (s,p,d,f) codificati tramite numeri crescenti
+
+        input:
+             PeriodicTable
+
+        output:
+             Atom
+        """
+
+        # Select numerical columns
+        numerical_columns = [feature for feature in self.periodic_table.columns if
+                      self.periodic_table[feature].dtype in ['int64', 'float64','int32', 'float32']]
+
+
+        if 'group_id' in numerical_columns:
+            self.periodic_table.loc[:,'group_id'] = self.periodic_table['group_id'].fillna(0)
+
+
+        categorical_data = self.get_categorical_data_processed(categorical_encode_plan = {'lattice_structure':'one-hot','block':{ 's': 0,'p' : 1,'d' : 2,'f' : 3}})
+        numerical_data = self.get_numerical_data_processed(numerical_columns)
+
+
+        self.atom_data = pd.concat([numerical_data,categorical_data], axis= 1)
+
+
 
 class DataProcessor():
 
