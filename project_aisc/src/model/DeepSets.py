@@ -1,10 +1,21 @@
+#
+# import os
+# os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
+# os.environ["CUDA_VISIBLE_DEVICES"] = "1"
+# os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
+import tensorflow as tf
+#
+# physical_devices = tf.config.list_physical_devices('GPU')
+# tf.config.experimental.set_memory_growth(physical_devices[0], True)
+# tf.config.experimental.set_synchronous_execution(False)
+
+from tensorflow import keras
 from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM,Conv1D,Flatten
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
-import tensorflow as tf
-from tensorflow import keras
 import numpy as np
 import sys
 from mendeleev import element
@@ -17,6 +28,127 @@ from Processing import DataProcessor
 import datetime
 import kerastuner as kt
 from kerastuner.tuners import Hyperband
+
+#Implement evaluate model for regressor
+#implement naive classification for regressor
+#Implement Classifier
+#Implement  nnon linear BaseDeepSet
+#Implement non linear regressor
+#Implement non linnear classifier
+#Implement class best Model
+#Implement config file
+
+
+class VisualDeepSet():
+
+    def __init__():
+        self.history = None
+
+    def show_metrics(self):
+
+        plt.plot(self.history.history['mean_absolute_error'])
+        plt.plot(self.history.history['val_mean_absolute_error'])
+        plt.title('Model mean_absolute_error')
+        plt.ylabel('mean_absolute_error')
+        plt.xlabel('Epoch')
+        plt.legend(['Train','Validation'],loc = 'upper left')
+        plt.show()
+
+    def show_loss(self):
+
+        plt.plot(self.history.history['loss'])
+        plt.plot(self.history.history['val_loss'])
+        plt.title('Model loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(['Train','Validation'],loc = 'upper left')
+        plt.show()
+
+
+
+
+class BaseDeepSet(VisualDeepSet):
+
+    def __init__(self,supercon_data_processed,latent_dimension):
+        self.number_inputs = len(supercon_data_processed)
+        self.input_dimension = supercon_data_processed[0].shape[1]
+        self.latent_dimension = latent_dimension
+        self.phi = None
+        self.rho = None
+        self.history = None
+
+
+    def build_phi(self):
+
+        input_atom = Input(shape = (self.input_dimension))
+        x = Dense(300,activation = "relu")(input_atom)
+        x = Dense(300,activation = "relu")(x)
+        x = Dense(300,activation = "relu")(x)
+        x = Dense(self.latent_dimension,activation = "linear",activity_regularizer = 'l1')(x)
+
+        self.phi = Model(inputs = input_atom,outputs = x)
+
+
+    def build_rho(self):
+        pass
+
+
+    def fit_model(self,X,y,X_val,y_val,callbacks = [],epochs= 50,batch_size = 64,patience=5):
+
+        #callbacks.append(EarlyStopping(monitor = 'val_loss',min_delta = 0.003,patience = patience, restore_best_weights = True))
+        self.history = self.rho.fit(x = X,y = y,epochs =epochs, batch_size = batch_size,shuffle = True ,validation_data =(X_val,y_val),callbacks = callbacks )
+
+
+class RegressorDeepSet(BaseDeepSet):
+
+    def __init__(self,supercon_data_processed,latent_dimension):
+        super().__init__(supercon_data_processed,latent_dimension)
+        self.rho = None
+
+    def build_rho(self):
+
+        inputs= [Input(self.input_dimension) for i in range(self.number_inputs)]
+        outputs = [self.phi(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(100,activation = "relu")(y)
+        output = Dense(1,activation = "relu",activity_regularizer = 'l1')(y)
+
+        self.rho = Model(inputs = inputs,outputs = output)
+
+
+    def build_model(self,learning_rate=0.001):
+
+        self.build_phi()
+        self.build_rho()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='mse',
+                          metrics=['mae',tf.keras.metrics.RootMeanSquaredError()])
+
+
+
+
+    def evaluate_model(self):
+        pass
+
+
+class ClassifierDeepSet(BaseDeepSet):
+
+    def __init__(self):
+        pass
+
+    def buil_rho(self):
+        pass
+
+    def build_model(self):
+        pass
+
+    def evaluate_model(self):
+        pass
 
 
 class DeepSet():
@@ -140,29 +272,35 @@ class DeepSet():
         hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
 
         model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
-                          loss='binary_crossentropy',
-                          metrics=[tf.keras.metrics.Precision(),'accuracy'])
+                          loss='mse',
+                          metrics=[tf.keras.metrics.RootMeanSquaredError(),'mae'])
 
         return model
 
     def phi_builder(self,hp):
 
         input_atom = Input(shape = (self.input_dim))
-        x = Dense(self.input_dim,kernel_initializer=tf.keras.initializers.Identity(),use_bias=False,activation='linear')(input_atom)
-        layers = hp.Int('layers_1',min_value = 2,max_value = 20,step = 2)
-
+        #n_element = input_atom[:,-1:]
+        #c = input_atom[:,:-1]
+        x = Dense(hp.Int('units_-1',min_value = 32,max_value = 1024,step = 32),activation='relu')(input_atom)
+        layers = hp.Int('layers_1',min_value = 5,max_value = 25,step = 1)
+        dropout_batch = hp.Choice('dropout_batch_phi',[True,False])
         for layer in range(layers):
-            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 1012,step = 32),activation='relu',activity_regularizer = 'l1')(x)
-            #x = BatchNormalization()(x)
-            #x = Dropout(hp.Float('dropout',0,0.5,step = 0.1))(x)
+            x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 1024,step = 32),activation='relu')(x)
+            if dropout_batch:
+                x = BatchNormalization()(x)
+                x = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(x)
 
-        if self.freeze_latent_dim_on_tuner:
-            x = Dense(self.latent_dim,activation='linear')(x)
+        #if self.freeze_latent_dim_on_tuner:
+        #    x = Dense(self.latent_dim,activation='linear')(x)
+        x = Dense(hp.Int('units_'+str(layer+1),min_value = 32,max_value = 1024,step = 32),activation='relu')(x)
+        #x = tf.math.multiply(x,n_element)
 
 
         phi = Model(inputs = input_atom,outputs = x)
-
+        layers = layers +1
         return phi,layers
+
 
     def rho_builder(self,hp):
 
@@ -171,20 +309,23 @@ class DeepSet():
         outputs = [phi(i) for i in inputs]
 
         y = Add()(outputs)
-        layers = hp.Int('layers_2',min_value = 2,max_value = 20,step = 2)
+        dropout_batch = hp.Choice('dropout_batch_rho',[True,False])
+        layers = hp.Int('layers_2',min_value = 8,max_value = 23,step = 1)
         for layer in range(layers):
             y = Dense(hp.Int('units_'+str(n_layers_phi+layer),min_value = 32,max_value = 1024,step = 32),activation='relu')(y)
-            #y = BatchNormalization()(y)
-            #y = Dropout(hp.Float('dropout',0,0.5,step = 0.1))(y)
+            if dropout_batch:
+                y = BatchNormalization()(y)
+                y = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(y)
 
         #activity_regularizer = hp.Choice('regularizer_rho',['l1','l2'])
         #output = Dense(1,activation = "sigmoid",activity_regularizer = activity_regularizer)(y)
-        output = Dense(1,activation = "sigmoid",activity_regularizer = 'l2')(y)
+        y = Dense(hp.Int('units_'+str(n_layers_phi+layer+1),min_value = 32,max_value = 512,step = 32),activation='relu')(y)
+        output = Dense(1,activation = "linear",activity_regularizer = 'l2')(y)
         rho = Model(inputs = inputs,outputs = output)
 
         return rho
 
-    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=80,epochs=100,num_best_model=1):
+    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=400,epochs=400,num_best_model=1):
 
         import datetime
         import os
@@ -201,7 +342,7 @@ class DeepSet():
             os.makedirs(DIR)
             n_best_model_per_day = 0
 
-        project_name = 'model_'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
+        project_name = 'model_regressor'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
@@ -210,7 +351,7 @@ class DeepSet():
                      project_name=project_name
                      )
 
-        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=15)
+        stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=30)
 
         tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
 
@@ -220,7 +361,7 @@ class DeepSet():
 
         return model
 
-    def load_best_model(self,directory,project_name,max_epochs=50,more_models = False,num_models = 1):
+    def load_best_model(self,directory,project_name,max_epochs=400,more_models = False,num_models = 1):
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
@@ -238,7 +379,7 @@ class DeepSet():
             self.rho = tuner.get_best_models(num_models=1)[0]
             del tuner
 
-    def load_best_architecture(self,directory,project_name,max_epochs=5):
+    def load_best_architecture(self,directory,project_name,max_epochs=400):
 
         tuner = kt.Hyperband(self.model_builder,
                      objective='val_loss',
