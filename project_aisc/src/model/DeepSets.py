@@ -131,24 +131,89 @@ class RegressorDeepSet(BaseDeepSet):
 
 
 
+    def evaluate_model(self,X_test,y_test):
 
-    def evaluate_model(self):
-        pass
+        R2=1-np.square((y_test-np.reshape(self.rho.predict(X_test),y_test.shape))).sum()/np.square((y_test - y_test.mean())).sum()
+
+        print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
+        print("RMSE: ",np.sqrt(self.rho.evaluate(X_test,y_test,verbose = 0)[0]),"\nR^2:",R2)
+
+
+    def naive_classifier(self,threshold,X_test,y_test):
+
+        limit = threshold
+
+        #true_positive: valore maggiore del threshold
+        true_positive = 0
+        #true_negative: valore minore del threshold
+        true_negative = 0
+        false_positive = 0
+        false_negative = 0
+
+        val = self.rho.predict(X_test)
+
+        for i in range(X_test[0].shape[0]):
+
+            if y_test[i] > limit:
+
+                if val[i] > limit:
+                    true_positive +=1
+                if val[i] <= limit:
+                    false_negative +=1
+
+            if y_test[i] <= limit:
+
+                if val[i] > limit:
+                    false_positive +=1
+
+                if val[i] <= limit:
+                    true_negative +=1
+
+        Accuracy = (true_positive+true_negative)/(true_positive+true_negative+false_negative+false_positive)
+        Precision = (true_positive)/(true_positive+false_positive)
+        Recall = (true_positive)/(true_positive+false_negative)
+        F1 = 2*(Recall*Precision)/(Recall + Precision)
+
+        print("Accuracy: {} \nPrecision: {} \nRecall: {} \nF1:{}".format(Accuracy,Precision,Recall,F1))
+
+        return true_positive,true_negative,false_positive,false_negative
+
 
 
 class ClassifierDeepSet(BaseDeepSet):
 
-    def __init__(self):
-        pass
+    def __init__(self,supercon_data_processed,latent_dimension):
+        super().__init__(supercon_data_processed,latent_dimension)
+        self.rho = None
 
-    def buil_rho(self):
-        pass
+    def build_rho(self):
 
-    def build_model(self):
-        pass
+        inputs= [Input(self.input_dimension) for i in range(self.number_inputs)]
+        outputs = [self.phi(i) for i in inputs]
 
-    def evaluate_model(self):
-        pass
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(100,activation = "relu")(y)
+        output = Dense(1,activation = "sigmoid",activity_regularizer = 'l1')(y)
+
+        self.rho = Model(inputs = inputs,outputs = output)
+
+    def build_model(self,learning_rate=0.0001):
+
+        self.build_phi()
+        self.build_rho()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='binary_crossentropy',
+                          metrics=['accuracy',tf.keras.metrics.Precision()])
+
+
+    def evaluate_classificator(self,X_test,y_test):
+
+        print("sparse_categorical_crossentropy: ",self.rho_classificator.evaluate(X_test,y_test,verbose=0)[0],"\nAccuracy: ",self.rho_classificator.evaluate(X_test,y_test,verbose=0)[1])
+        print("Accuracy on test: ",np.sqrt(self.rho_classificator.evaluate(X_test,y_test,verbose = 0)[1]))
 
 
 class DeepSet():
