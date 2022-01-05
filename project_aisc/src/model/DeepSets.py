@@ -17,6 +17,9 @@ from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,L
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 import numpy as np
+from sklearn.metrics import mean_squared_error as sk_mean_squared_error,r2_score as sk_r2_score
+from sklearn.metrics import accuracy_score as sk_accuracy_score,precision_score as sk_precision_score
+from sklearn.metrics import recall_score as sk_recall_score, f1_score as sk_f1_score
 import sys
 from mendeleev import element
 import pandas as pd
@@ -146,6 +149,10 @@ class BaseDeepSet(VisualDeepSet):
     def build_rho(self):
         pass
 
+    def predict(self,X):
+
+        return self.rho.predict(X)
+
 
     def fit_model(self,X,y,X_val,y_val,callbacks = [],epochs= 50,batch_size = 64,patience=5):
 
@@ -211,10 +218,12 @@ class RegressorDeepSet2Order(BaseDeepSet):
 
     def evaluate_model(self,X_test,y_test):
 
-        R2=1-np.square((y_test-np.reshape(self.rho.predict(X_test),y_test.shape))).sum()/np.square((y_test - y_test.mean())).sum()
 
-        print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
-        print("RMSE: ",np.sqrt(self.rho.evaluate(X_test,y_test,verbose = 0)[0]),"\nR^2:",R2)
+        y_pred = self.predict(X_test)
+
+        print(f"Mean Squared Error: {sk_mean_squared_error(y_test,y_pred)}\n"
+              f"Root Mean Squared Error: {sk_mean_squared_error(y_test,y_pred,squared=False)}\n"
+              f"R^2: {sk_r2_score(y_test,y_pred)}")
 
 
 
@@ -253,53 +262,25 @@ class RegressorDeepSet(BaseDeepSet):
 
     def evaluate_model(self,X_test,y_test):
 
-        R2=1-np.square((y_test-np.reshape(self.rho.predict(X_test),y_test.shape))).sum()/np.square((y_test - y_test.mean())).sum()
+        y_pred = self.predict(X_test)
+        print(f"Mean Squared Error: {sk_mean_squared_error(y_test,y_pred)}\n"
+              f"Root Mean Squared Error: {sk_mean_squared_error(y_test,y_pred,squared=False)}\n"
+              f"R^2: {sk_r2_score(y_test,y_pred)}")
 
-        print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
-        print("RMSE: ",np.sqrt(self.rho.evaluate(X_test,y_test,verbose = 0)[0]),"\nR^2:",R2)
+    def naive_classifier(self,threshold,X_test):
 
+        y_pred = self.predict(X_test)
+        y_pred = tf.where(y_pred>throshold,1,0)
 
-    def naive_classifier(self,threshold,X_test,y_test):
+        return y_pred
 
-        limit = threshold
+    def naive_classifier_metrics(self,threshold,X_test,y_test):
 
-        #true_positive: valore maggiore del threshold
-        true_positive = 0
-        #true_negative: valore minore del threshold
-        true_negative = 0
-        false_positive = 0
-        false_negative = 0
+        y_pred = self.predict(X_test)
+        y_pred = tf.where(y_pred>throshold,1,0)
+        print(f"Accuracy: {sk_accuracy_score(y_test,y_pred)} \nPrecision: {sk_precision_score(y_test,y_pred)}"
+              f"Recall: {sk_recall_score(y_test,y_pred)} \nF1: {sk_f1_score(y_test,y_pred)}")
 
-        val = self.rho.predict(X_test)
-
-        for i in range(X_test[0].shape[0]):
-
-            if y_test[i] > limit:
-
-                if val[i] > limit:
-                    true_positive +=1
-                if val[i] <= limit:
-                    false_negative +=1
-
-            if y_test[i] <= limit:
-
-                if val[i] > limit:
-                    false_positive +=1
-
-                if val[i] <= limit:
-                    true_negative +=1
-
-        Accuracy = (true_positive+true_negative)/(true_positive+true_negative+false_negative+false_positive)
-        Precision = (true_positive)/(true_positive+false_positive)
-        Recall = (true_positive)/(true_positive+false_negative)
-        F1 = 2*(Recall*Precision)/(Recall + Precision)
-
-        print("Accuracy: {} \nPrecision: {} \nRecall: {} \nF1:{}".format(Accuracy,Precision,Recall,F1))
-
-        return true_positive,true_negative,false_positive,false_negative
-
-import sklearn.metrics
-#help(sklearn.metrics.mean_squared_error)
 
 class ClassifierDeepSet(BaseDeepSet):
 
