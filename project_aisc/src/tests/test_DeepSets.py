@@ -43,6 +43,20 @@ def test_deepset_train(supercon_dataset,supercon_temperature):
 
     assert regressor_deepset.history != None
 
+def test_deepset_predict(supercon_dataset,supercon_temperature):
+    """Check model.predict return an numpy array"""
+
+    X,X_val,y,y_val = train_test_split(np.moveaxis(np.array(supercon_dataset),0,1),np.array(supercon_temperature),test_size = 0.3)
+    X  = list(np.moveaxis(X,0,1))
+    X_val  = list(np.moveaxis(X_val,0,1))
+
+    regressor_deepset = DeepSets.RegressorDeepSet(supercon_dataset)
+    regressor_deepset.build_model()
+    y_pred = regressor_deepset.predict(X_val)
+
+    assert type(y_pred) == type(np.array([]))
+
+
 
 #
 # sc_dataframe = DataLoader.SuperCon(sc_path ='data/raw/supercon_tot.csv')
