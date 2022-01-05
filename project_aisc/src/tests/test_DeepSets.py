@@ -56,6 +56,20 @@ def test_deepset_predict(supercon_dataset,supercon_temperature):
 
     assert type(y_pred) == type(np.array([]))
 
+def test_regressor_deepset_naive_prediction(supercon_dataset,supercon_temperature):
+
+    X,X_val,y,y_val = train_test_split(np.moveaxis(np.array(supercon_dataset),0,1),np.array(supercon_temperature),test_size = 0.3)
+    X  = list(np.moveaxis(X,0,1))
+    X_val  = list(np.moveaxis(X_val,0,1))
+
+    regressor_deepset = DeepSets.RegressorDeepSet(supercon_dataset)
+    regressor_deepset.build_model()
+    y_pred = regressor_deepset.naive_classification(X_val)
+    y_pred = np.array(y_pred)
+
+    assert (y_pred == 0).all() or (y_pred==1).all()
+
+
 
 
 #
