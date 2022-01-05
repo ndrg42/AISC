@@ -38,10 +38,65 @@ from kerastuner.tuners import Hyperband
 #Implement class best Model
 #Implement config file
 
+def build_phi():
+
+    input_atom = Input(shape = (33))
+    x = Dense(300,activation = "relu")(input_atom)
+    x = Dense(300,activation = "relu")(x)
+    x = Dense(300,activation = "linear",activity_regularizer = 'l1')(x)
+
+    return Model(inputs = input_atom,outputs = x)
+
+def build_rho():
+
+    input_atom = Input(shape = (300))
+    x = Dense(300,activation = "relu")(input_atom)
+    x = Dense(300,activation = "relu")(x)
+    x = Dense(1,activation = "relu",activity_regularizer = 'l1')(x)
+
+    return Model(inputs = input_atom,outputs = x)
+
+
+
+class SubRegressorDeepSet2Order(tf.keras.Model):
+
+    def __init__(self):
+        super(SubRegressorDeepSet2Order,self).__init__()
+        self.phi = build_phi()
+        self.rho = build_rho()
+        self.phi_int = build_phi()
+        self.rho_int = self.build_rho_int()
+
+
+    def call(self,input_tensor):
+        single_inputs = input_tensor[:-1]
+        int_inputs = input_tensor[-1]
+        phi_outputs = [self.phi(input) for input in single_inputs]
+        y = Add()(phi_outputs)
+
+        rho_int_outputs = [self.rho_int(inputs) for inputs in int_inputs]
+        z = Add()(rho_int_outputs)
+        y = Add()([y,z])
+
+        return self.rho(y)
+
+
+    def build_rho_int(self):
+
+        inputs= [Input(33) for i in range(2)]
+        outputs = [self.phi_int(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        output = Dense(300,activation = "linear",activity_regularizer = 'l1')(y)
+
+        return Model(inputs = inputs,outputs = output)
+
 
 class VisualDeepSet():
 
-    def __init__():
+    def __init__(self):
         self.history = None
 
     def show_metrics(self):
@@ -83,7 +138,6 @@ class BaseDeepSet(VisualDeepSet):
         input_atom = Input(shape = (self.input_dimension))
         x = Dense(300,activation = "relu")(input_atom)
         x = Dense(300,activation = "relu")(x)
-        x = Dense(300,activation = "relu")(x)
         x = Dense(self.latent_dimension,activation = "linear",activity_regularizer = 'l1')(x)
 
         self.phi = Model(inputs = input_atom,outputs = x)
@@ -97,6 +151,72 @@ class BaseDeepSet(VisualDeepSet):
 
         #callbacks.append(EarlyStopping(monitor = 'val_loss',min_delta = 0.003,patience = patience, restore_best_weights = True))
         self.history = self.rho.fit(x = X,y = y,epochs =epochs, batch_size = batch_size,shuffle = True ,validation_data =(X_val,y_val),callbacks = callbacks )
+
+import itertools
+
+class RegressorDeepSet2Order(BaseDeepSet):
+
+    def __init__(self,supercon_data_processed,latent_dimension):
+        super().__init__(supercon_data_processed,latent_dimension)
+        self.rho = None
+        self.phi_int = None
+        self.rho_int = None
+
+    def build_rho_int(self):
+
+        inputs= [Input(self.input_dimension) for i in range(2)]
+        outputs = [self.phi_int(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        output = Dense(300,activation = "linear",activity_regularizer = 'l1')(y)
+
+        self.rho_int = Model(inputs = inputs,outputs = output)
+
+
+
+    def build_rho(self):
+
+        inputs= [Input(self.input_dimension) for i in range(self.number_inputs)]
+        outputs = [self.phi(i) for i in inputs]
+
+        outputs_int = [self.rho_int(interaction) for interaction in itertools.combinations(inputs,2)]
+
+        z = Add()(outputs_int)
+        y = Add()(outputs)
+        y = y+z
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(100,activation = "relu")(y)
+        output = Dense(1,activation = "relu",activity_regularizer = 'l1')(y)
+
+        self.rho = Model(inputs = inputs,outputs = output)
+
+
+    def build_model(self,learning_rate=0.001):
+
+        self.build_phi()
+        self.phi_int = self.phi
+        self.build_phi()
+        self.build_rho_int()
+        self.build_rho()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='mse',
+                          metrics=['mae',tf.keras.metrics.RootMeanSquaredError()])
+
+
+
+    def evaluate_model(self,X_test,y_test):
+
+        R2=1-np.square((y_test-np.reshape(self.rho.predict(X_test),y_test.shape))).sum()/np.square((y_test - y_test.mean())).sum()
+
+        print("MSE: ",self.rho.evaluate(X_test,y_test,verbose=0)[0],"\nMAE: ",self.rho.evaluate(X_test,y_test,verbose=0)[1])
+        print("RMSE: ",np.sqrt(self.rho.evaluate(X_test,y_test,verbose = 0)[0]),"\nR^2:",R2)
+
+
 
 
 class RegressorDeepSet(BaseDeepSet):
@@ -178,7 +298,8 @@ class RegressorDeepSet(BaseDeepSet):
 
         return true_positive,true_negative,false_positive,false_negative
 
-
+import sklearn.metrics
+#help(sklearn.metrics.mean_squared_error)
 
 class ClassifierDeepSet(BaseDeepSet):
 
