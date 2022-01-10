@@ -16,6 +16,8 @@ from tensorflow import keras
 from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM,Conv1D,Flatten
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.metrics import RootMeanSquaredError
 import numpy as np
 from sklearn.metrics import mean_squared_error as sk_mean_squared_error,r2_score as sk_r2_score
 from sklearn.metrics import accuracy_score as sk_accuracy_score,precision_score as sk_precision_score
@@ -41,61 +43,120 @@ from kerastuner.tuners import Hyperband
 #Implement class best Model
 #Implement config file
 
-def build_phi():
+def build_phi(input_dim,latent_dim):
+    """Return phi model of rho(sum_i phi(atom_i))"""
 
-    input_atom = Input(shape = (33))
+    input_atom = Input(shape = (input_dim))
     x = Dense(300,activation = "relu")(input_atom)
     x = Dense(300,activation = "relu")(x)
-    x = Dense(300,activation = "linear",activity_regularizer = 'l1')(x)
+    output = Dense(latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
 
-    return Model(inputs = input_atom,outputs = x)
+    return Model(inputs = input_atom,outputs = output)
 
-def build_rho():
+def build_rho(latent_dim):
+    """Return rho model of rho(sum_i phi(atom_i))"""
 
-    input_atom = Input(shape = (300))
-    x = Dense(300,activation = "relu")(input_atom)
+    atom_representation = Input(shape = (latent_dim))
+    x = Dense(300,activation = "relu")(atom_representation)
     x = Dense(300,activation = "relu")(x)
-    x = Dense(1,activation = "relu",activity_regularizer = 'l1')(x)
+    output = Dense(1,activation = "relu",activity_regularizer = 'l1')(x)
 
-    return Model(inputs = input_atom,outputs = x)
+    return Model(inputs = atom_representation,outputs = output)
 
+class DeepSetModel(tf.keras.Model):
+    """DeepSet model"""
 
-
-class SubRegressorDeepSet2Order(tf.keras.Model):
-
-    def __init__(self):
-        super(SubRegressorDeepSet2Order,self).__init__()
-        self.phi = build_phi()
-        self.rho = build_rho()
-        self.phi_int = build_phi()
-        self.rho_int = self.build_rho_int()
+    def __init__(self,input_dim,latent_dim):
+        super(DeepSetModel,self).__init__()
+        self.phi = build_phi(input_dim,latent_dim)
+        self.rho = build_rho(latent_dim)
+        self.visual_model = None
 
 
-    def call(self,input_tensor):
-        single_inputs = input_tensor[:-1]
-        int_inputs = input_tensor[-1]
-        phi_outputs = [self.phi(input) for input in single_inputs]
-        y = Add()(phi_outputs)
+    def call(self,atoms_input):
 
-        rho_int_outputs = [self.rho_int(inputs) for inputs in int_inputs]
-        z = Add()(rho_int_outputs)
-        y = Add()([y,z])
+        phi_outputs = [self.phi(input) for input in atoms_input]
+        material_representation = Add()(phi_outputs)
+        rho_output = self.rho(material_representation)
 
-        return self.rho(y)
+        return rho_output
+
+def get_regressor_deepset(input_dim = 33,latent_dim=300,learning_rate=0.001):
+
+    regressor_deepset = DeepSetModel(input_dim,latent_dim)
+    regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
+                              loss= 'mse',
+                              metrics=['mean_absolute_error',RootMeanSquaredError()]
+                              )
+    return regressor_deepset
 
 
-    def build_rho_int(self):
 
-        inputs= [Input(33) for i in range(2)]
-        outputs = [self.phi_int(i) for i in inputs]
 
-        y = Add()(outputs)
-        y = Dense(300,activation = "relu")(y)
-        y = Dense(300,activation = "relu")(y)
-        output = Dense(300,activation = "linear",activity_regularizer = 'l1')(y)
 
-        return Model(inputs = inputs,outputs = output)
+class VisualModel:
 
+    def __init__(self,history):
+        self.history = history
+
+    def show_metrics(self):
+
+        plt.plot(self.history.history['mean_absolute_error'])
+        plt.plot(self.history.history['val_mean_absolute_error'])
+        plt.title('Model mean_absolute_error')
+        plt.ylabel('mean_absolute_error')
+        plt.xlabel('Epoch')
+        plt.legend(['Train','Validation'],loc = 'upper left')
+        plt.show()
+
+    def show_loss(self):
+
+        plt.plot(self.history.history['loss'])
+        plt.plot(self.history.history['val_loss'])
+        plt.title('Model loss')
+        plt.ylabel('Loss')
+        plt.xlabel('Epoch')
+        plt.legend(['Train','Validation'],loc = 'upper left')
+        plt.show()
+
+
+#
+#
+# class SubRegressorDeepSet2Order(tf.keras.Model):
+#
+#     def __init__(self):
+#         super(SubRegressorDeepSet2Order,self).__init__()
+#         self.phi = build_phi()
+#         self.rho = build_rho()
+#         self.phi_int = build_phi()
+#         self.rho_int = self.build_rho_int()
+#
+#
+#     def call(self,input_tensor):
+#         single_inputs = input_tensor[:-1]
+#         int_inputs = input_tensor[-1]
+#         phi_outputs = [self.phi(input) for input in single_inputs]
+#         y = Add()(phi_outputs)
+#
+#         rho_int_outputs = [self.rho_int(inputs) for inputs in int_inputs]
+#         z = Add()(rho_int_outputs)
+#         y = Add()([y,z])
+#
+#         return self.rho(y)
+#
+#
+#     def build_rho_int(self):
+#
+#         inputs= [Input(33) for i in range(2)]
+#         outputs = [self.phi_int(i) for i in inputs]
+#
+#         y = Add()(outputs)
+#         y = Dense(300,activation = "relu")(y)
+#         y = Dense(300,activation = "relu")(y)
+#         output = Dense(300,activation = "linear",activity_regularizer = 'l1')(y)
+#
+#         return Model(inputs = inputs,outputs = output)
+#
 
 class VisualDeepSet():
 
@@ -127,7 +188,7 @@ class VisualDeepSet():
 
 class BaseDeepSet(VisualDeepSet):
 
-    def __init__(self,supercon_data_processed,latent_dimension):
+    def __init__(self,supercon_data_processed,latent_dimension=300):
         self.number_inputs = len(supercon_data_processed)
         self.input_dimension = supercon_data_processed[0].shape[1]
         self.latent_dimension = latent_dimension
@@ -158,6 +219,64 @@ class BaseDeepSet(VisualDeepSet):
 
         #callbacks.append(EarlyStopping(monitor = 'val_loss',min_delta = 0.003,patience = patience, restore_best_weights = True))
         self.history = self.rho.fit(x = X,y = y,epochs =epochs, batch_size = batch_size,shuffle = True ,validation_data =(X_val,y_val),callbacks = callbacks )
+
+
+
+class RegressorDeepSet(BaseDeepSet):
+
+    def __init__(self,supercon_data_processed,latent_dimension=300):
+        super().__init__(supercon_data_processed,latent_dimension)
+        self.rho = None
+
+    def build_rho(self):
+
+        inputs= [Input(self.input_dimension) for i in range(self.number_inputs)]
+        outputs = [self.phi(i) for i in inputs]
+
+        y = Add()(outputs)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(300,activation = "relu")(y)
+        y = Dense(100,activation = "relu")(y)
+        output = Dense(1,activation = "relu",activity_regularizer = 'l1')(y)
+
+        self.rho = Model(inputs = inputs,outputs = output)
+
+
+    def build_model(self,learning_rate=0.001):
+
+        self.build_phi()
+        self.build_rho()
+        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
+                          loss='mse',
+                          metrics=['mean_absolute_error',tf.keras.metrics.RootMeanSquaredError()])
+
+
+
+    def evaluate_model(self,X_test,y_test):
+
+        y_pred = self.predict(X_test)
+        print(f"Mean Squared Error: {sk_mean_squared_error(y_test,y_pred)}\n"
+              f"Root Mean Squared Error: {sk_mean_squared_error(y_test,y_pred,squared=False)}\n"
+              f"R^2: {sk_r2_score(y_test,y_pred)}")
+
+    def naive_classification(self,X_test,threshold=0):
+
+        y_pred = self.predict(X_test)
+        y_pred = tf.where(y_pred>threshold,1,0)
+
+        return y_pred
+
+    def naive_classification_metrics(self,threshold,X_test,y_test):
+
+        y_pred = self.predict(X_test)
+        y_pred = tf.where(y_pred>threshold,1,0)
+        print(f"Accuracy: {sk_accuracy_score(y_test,y_pred)} \nPrecision: {sk_precision_score(y_test,y_pred)}"
+              f"Recall: {sk_recall_score(y_test,y_pred)} \nF1: {sk_f1_score(y_test,y_pred)}")
+
+
+
 
 import itertools
 
@@ -227,59 +346,6 @@ class RegressorDeepSet2Order(BaseDeepSet):
 
 
 
-
-class RegressorDeepSet(BaseDeepSet):
-
-    def __init__(self,supercon_data_processed,latent_dimension):
-        super().__init__(supercon_data_processed,latent_dimension)
-        self.rho = None
-
-    def build_rho(self):
-
-        inputs= [Input(self.input_dimension) for i in range(self.number_inputs)]
-        outputs = [self.phi(i) for i in inputs]
-
-        y = Add()(outputs)
-        y = Dense(300,activation = "relu")(y)
-        y = Dense(300,activation = "relu")(y)
-        y = Dense(300,activation = "relu")(y)
-        y = Dense(300,activation = "relu")(y)
-        y = Dense(100,activation = "relu")(y)
-        output = Dense(1,activation = "relu",activity_regularizer = 'l1')(y)
-
-        self.rho = Model(inputs = inputs,outputs = output)
-
-
-    def build_model(self,learning_rate=0.001):
-
-        self.build_phi()
-        self.build_rho()
-        self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
-                          loss='mse',
-                          metrics=['mae',tf.keras.metrics.RootMeanSquaredError()])
-
-
-
-    def evaluate_model(self,X_test,y_test):
-
-        y_pred = self.predict(X_test)
-        print(f"Mean Squared Error: {sk_mean_squared_error(y_test,y_pred)}\n"
-              f"Root Mean Squared Error: {sk_mean_squared_error(y_test,y_pred,squared=False)}\n"
-              f"R^2: {sk_r2_score(y_test,y_pred)}")
-
-    def naive_classifier(self,threshold,X_test):
-
-        y_pred = self.predict(X_test)
-        y_pred = tf.where(y_pred>throshold,1,0)
-
-        return y_pred
-
-    def naive_classifier_metrics(self,threshold,X_test,y_test):
-
-        y_pred = self.predict(X_test)
-        y_pred = tf.where(y_pred>throshold,1,0)
-        print(f"Accuracy: {sk_accuracy_score(y_test,y_pred)} \nPrecision: {sk_precision_score(y_test,y_pred)}"
-              f"Recall: {sk_recall_score(y_test,y_pred)} \nF1: {sk_f1_score(y_test,y_pred)}")
 
 
 class ClassifierDeepSet(BaseDeepSet):
