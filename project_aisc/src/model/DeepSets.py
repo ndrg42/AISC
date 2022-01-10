@@ -17,7 +17,7 @@ from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,L
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
-from tensorflow.keras.metrics import RootMeanSquaredError
+from tensorflow.keras.metrics import RootMeanSquaredError,Precision
 import numpy as np
 from sklearn.metrics import mean_squared_error as sk_mean_squared_error,r2_score as sk_r2_score
 from sklearn.metrics import accuracy_score as sk_accuracy_score,precision_score as sk_precision_score
@@ -53,24 +53,29 @@ def build_phi(input_dim,latent_dim):
 
     return Model(inputs = input_atom,outputs = output)
 
-def build_rho(latent_dim):
+def build_rho(latent_dim,mode='regression'):
     """Return rho model of rho(sum_i phi(atom_i))"""
 
     atom_representation = Input(shape = (latent_dim))
     x = Dense(300,activation = "relu")(atom_representation)
     x = Dense(300,activation = "relu")(x)
-    output = Dense(1,activation = "relu",activity_regularizer = 'l1')(x)
+
+    if mode == 'regression':
+        activation = 'relu'
+    if mode == 'classification':
+        activation = 'sigmoid'
+
+    output = Dense(1,activation = activation,activity_regularizer = 'l1')(x)
 
     return Model(inputs = atom_representation,outputs = output)
 
 class DeepSetModel(tf.keras.Model):
     """DeepSet model"""
 
-    def __init__(self,input_dim,latent_dim):
+    def __init__(self,input_dim,latent_dim,mode='regression'):
         super(DeepSetModel,self).__init__()
         self.phi = build_phi(input_dim,latent_dim)
-        self.rho = build_rho(latent_dim)
-        self.visual_model = None
+        self.rho = build_rho(latent_dim,mode)
 
 
     def call(self,atoms_input):
@@ -81,14 +86,24 @@ class DeepSetModel(tf.keras.Model):
 
         return rho_output
 
-def get_regressor_deepset(input_dim = 33,latent_dim=300,learning_rate=0.001):
+def get_deepset_regressor(input_dim = 33,latent_dim=300,learning_rate=0.001):
 
-    regressor_deepset = DeepSetModel(input_dim,latent_dim)
+    regressor_deepset = DeepSetModel(input_dim,latent_dim,mode = 'regression')
     regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
-                              loss= 'mse',
+                              loss= 'mean_squared_error',
                               metrics=['mean_absolute_error',RootMeanSquaredError()]
                               )
     return regressor_deepset
+
+
+def get_deepset_classifier(input_dim = 33,latent_dim=300,learning_rate=0.001):
+
+    classifier_deepset = DeepSetModel(input_dim,latent_dim,mode='classification')
+    classifier_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
+                              loss= 'binary_crossentropy',
+                              metrics=['accuracy', Precision()]
+                              )
+    return classifier_deepset
 
 
 
