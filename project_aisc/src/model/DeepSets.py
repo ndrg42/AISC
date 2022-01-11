@@ -71,12 +71,21 @@ def build_rho(latent_dim,mode='regression'):
 
 def get_linear_deepset_regressor(input_dim = 32,latent_dim=300,learning_rate=0.001):
 
-    regressor_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'regression')
-    regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
+    linear_regressor_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'regression')
+    linear_regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
                               loss= 'mean_squared_error',
                               metrics=['mean_absolute_error',RootMeanSquaredError()]
                               )
-    return regressor_deepset
+    return linear_regressor_deepset
+
+def get_linear_deepset_classifier(input_dim = 32,latent_dim=300,learning_rate=0.001):
+
+    classifier_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'classification')
+    classifier_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
+                              loss= 'binary_crossentropy',
+                              metrics=['accuracy', Precision()]
+                              )
+    return classifier_deepset
 
 
 class DeepSetModel(tf.keras.Model):
