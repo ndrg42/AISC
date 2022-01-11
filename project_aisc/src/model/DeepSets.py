@@ -13,7 +13,7 @@ import tensorflow as tf
 # tf.config.experimental.set_synchronous_execution(False)
 
 from tensorflow import keras
-from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM,Conv1D,Flatten
+from tensorflow.keras.layers import Dense,Dropout,BatchNormalization,Input,Add,LSTM,Conv1D,Flatten,Multiply
 from tensorflow.keras.models import Model
 from tensorflow.keras.callbacks import EarlyStopping
 from tensorflow.keras.optimizers import Adam
@@ -46,7 +46,7 @@ from kerastuner.tuners import Hyperband
 def build_phi(input_dim,latent_dim):
     """Return phi model of rho(sum_i phi(atom_i))"""
 
-    input_atom = Input(shape = (input_dim))
+    input_atom = Input(shape = (input_dim,))
     x = Dense(300,activation = "relu")(input_atom)
     x = Dense(300,activation = "relu")(x)
     output = Dense(latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
@@ -56,7 +56,7 @@ def build_phi(input_dim,latent_dim):
 def build_rho(latent_dim,mode='regression'):
     """Return rho model of rho(sum_i phi(atom_i))"""
 
-    atom_representation = Input(shape = (latent_dim))
+    atom_representation = Input(shape = (latent_dim,))
     x = Dense(300,activation = "relu")(atom_representation)
     x = Dense(300,activation = "relu")(x)
 
@@ -68,6 +68,16 @@ def build_rho(latent_dim,mode='regression'):
     output = Dense(1,activation = activation,activity_regularizer = 'l1')(x)
 
     return Model(inputs = atom_representation,outputs = output)
+
+def get_linear_deepset_regressor(input_dim = 32,latent_dim=300,learning_rate=0.001):
+
+    regressor_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'regression')
+    regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
+                              loss= 'mean_squared_error',
+                              metrics=['mean_absolute_error',RootMeanSquaredError()]
+                              )
+    return regressor_deepset
+
 
 class DeepSetModel(tf.keras.Model):
     """DeepSet model"""
@@ -105,6 +115,19 @@ def get_deepset_classifier(input_dim = 33,latent_dim=300,learning_rate=0.001):
                               )
     return classifier_deepset
 
+
+class DeepSetLinearModel(DeepSetModel):
+
+    def __init__(self,input_dim,latent_dim,mode='regression'):
+        super(DeepSetLinearModel,self).__init__(input_dim,latent_dim,mode)
+
+    def call(self,atoms_input):
+
+        phi_outputs = [Multiply()([tf.expand_dims(input[:,-1],1),self.phi(input[:,:-1])]) for input in atoms_input]
+        material_representation = Add()(phi_outputs)
+        rho_output = self.rho(material_representation)
+
+        return rho_output
 
 
 
