@@ -34,12 +34,6 @@ import datetime
 import kerastuner as kt
 from kerastuner.tuners import Hyperband
 
-#Implement evaluate model for regressor
-#implement naive classification for regressor
-#Implement Classifier
-#Implement  nnon linear BaseDeepSet
-#Implement non linear regressor
-#Implement non linnear classifier
 #Implement class best Model
 #Implement config file
 
@@ -138,7 +132,46 @@ class DeepSetLinearModel(DeepSetModel):
 
         return rho_output
 
+def get_deepsetsecondorder_regressor(input_atom_dim = 33,
+                                     input_interaction_dim=33,
+                                     latent_dim=300,
+                                     mode='regression',
+                                     learning_rate=0.001):
 
+    regressor_deepsetsecondorder = DeepSetSecondOrder(input_atom_dim=input_atom_dim,
+                                           input_interaction_dim=input_interaction_dim,
+                                           latent_dim=latent_dim,
+                                           mode = mode)
+
+    regressor_deepsetsecondorder.compile(optimizer= Adam(learning_rate = learning_rate),
+                              loss= 'mean_squared_error',
+                              metrics=['mean_absolute_error',RootMeanSquaredError()]
+                              )
+
+    return regressor_deepsetsecondorder
+
+
+class DeepSetSecondOrder(DeepSetModel):
+
+    def __init__(self,input_atom_dim,input_interaction_dim,latent_dim,mode,):
+        super(DeepSetSecondOrder,self).__init__(input_atom_dim,latent_dim,mode='regression')
+        self.interaction = DeepSetModel(input_interaction_dim,latent_dim,mode='regression')
+
+    def call(self,atom_interaction_input):
+
+        atoms_input = atom_interaction_input[:-1]
+        interactions_input = atom_interaction_input[-1]
+
+        phi_outputs = [self.phi(input) for input in atoms_input]
+        linear_representation = Add()(phi_outputs)
+
+        interaction_outputs = [self.interaction(input) for input in interactions_input]
+        interactions_represetation = Add()(interaction_outputs)
+
+        material_representation = Add()([linear_representation,interactions_represetation])
+        rho_output = self.rho(material_representation)
+
+        return rho_output
 
 
 class VisualModel:
