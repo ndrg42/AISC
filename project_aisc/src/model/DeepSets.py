@@ -33,18 +33,35 @@ from Processing import DataProcessor
 import datetime
 import kerastuner as kt
 from kerastuner.tuners import Hyperband
+import yaml
+from yaml import Loader
 
 #Implement class best Model
 #Implement config file
 
+with open('/home/claudio/AISC/project_aisc/config/model_config.yaml') as file:
+    model_config = yaml.load(file,Loader)
 
-def build_phi(input_dim,latent_dim):
+# def build_phi(input_dim,latent_dim):
+#     """Return phi model of rho(sum_i phi(atom_i))"""
+#
+#     input_atom = Input(shape = (input_dim,))
+#     x = Dense(300,activation = "relu")(input_atom)
+#     x = Dense(300,activation = "relu")(x)
+#     output = Dense(latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
+#
+#     return Model(inputs = input_atom,outputs = output)
+
+def build_phi(input,layers,output):
     """Return phi model of rho(sum_i phi(atom_i))"""
 
-    input_atom = Input(shape = (input_dim,))
-    x = Dense(300,activation = "relu")(input_atom)
-    x = Dense(300,activation = "relu")(x)
-    output = Dense(latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
+    input_atom = Input(shape = (input,))
+    x = input_atom
+
+    for layer in layers:
+        x = Dense(**layer)(x)
+
+    output = Dense(**output)(x)
 
     return Model(inputs = input_atom,outputs = output)
 
@@ -86,9 +103,9 @@ def get_linear_deepset_classifier(input_dim = 32,latent_dim=300,learning_rate=0.
 class DeepSetModel(tf.keras.Model):
     """DeepSet model"""
 
-    def __init__(self,input_dim,latent_dim,mode='regression'):
+    def __init__(self,input_dim,latent_dim,model_setup,mode='regression'):
         super(DeepSetModel,self).__init__()
-        self.phi = build_phi(input_dim,latent_dim)
+        self.phi = build_phi(**model_setup)#input_dim,latent_dim)
         self.rho = build_rho(latent_dim,mode)
 
 
@@ -110,9 +127,9 @@ def get_deepset_regressor(input_dim = 33,latent_dim=300,learning_rate=0.001):
     return regressor_deepset
 
 
-def get_deepset_classifier(input_dim = 33,latent_dim=300,learning_rate=0.001):
+def get_deepset_classifier(input_dim = 33,latent_dim=300,learning_rate=0.001,model_setup=model_config['phi setup']):
 
-    classifier_deepset = DeepSetModel(input_dim,latent_dim,mode='classification')
+    classifier_deepset = DeepSetModel(input_dim,latent_dim,mode='classification',model_setup = model_setup)
     classifier_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
                               loss= 'binary_crossentropy',
                               metrics=['accuracy', Precision()]
@@ -174,12 +191,9 @@ class DeepSetSecondOrder(DeepSetModel):
 
         return rho_output
 
-avaible_model = {
-    'linear regressor': get_linear_deepset_regressor,
-    'linear classifier': get_linear_deepset_classifier,
-    'regressor': get_deepset_regressor,
-    'classifier': get_deepset_classifier,
-}
+
+with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
+    avaible_model = yaml.load(file,Loader)
 
 def get_model(model='classifier'):
     """Retrive and return the specified model using avaible_model (dcit) as a switch controll"""
@@ -189,6 +203,7 @@ def get_model(model='classifier'):
         return model_builder()
     except:
         print('Model not found.')
+
 
 
 # class VisualModel:
