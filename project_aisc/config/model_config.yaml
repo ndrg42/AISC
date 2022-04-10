@@ -1,0 +1,7 @@
+phi setup:
+  input: 33
+  layers:
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+  output: {'units': 300, 'activation':'linear', 'activity_regularizer':'l1'}
