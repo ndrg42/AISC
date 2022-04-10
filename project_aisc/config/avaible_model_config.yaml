@@ -1,0 +1,7 @@
+# Defined models ready to be used for training and prediction
+# On the left the name by which to call the model
+# On the right the methods to call the desired model
+linear regressor: !!python/name:DeepSets.get_linear_deepset_regressor
+linear classifier: !!python/name:DeepSets.get_linear_deepset_classifier
+regressor: !!python/name:DeepSets.get_deepset_regressor
+classifier: !!python/name:DeepSets.get_deepset_classifier
