@@ -37,6 +37,7 @@ from kerastuner.tuners import Hyperband
 #Implement class best Model
 #Implement config file
 
+
 def build_phi(input_dim,latent_dim):
     """Return phi model of rho(sum_i phi(atom_i))"""
 
@@ -173,32 +174,48 @@ class DeepSetSecondOrder(DeepSetModel):
 
         return rho_output
 
+avaible_model = {
+    'linear regressor': get_linear_deepset_regressor,
+    'linear classifier': get_linear_deepset_classifier,
+    'regressor': get_deepset_regressor,
+    'classifier': get_deepset_classifier,
+}
 
-class VisualModel:
+def get_model(model='classifier'):
+    """Retrive and return the specified model using avaible_model (dcit) as a switch controll"""
 
-    def __init__(self,history):
-        self.history = history
+    model_builder = avaible_model.get(model)
+    try:
+        return model_builder()
+    except:
+        print('Model not found.')
 
-    def show_metrics(self):
 
-        plt.plot(self.history.history['mean_absolute_error'])
-        plt.plot(self.history.history['val_mean_absolute_error'])
-        plt.title('Model mean_absolute_error')
-        plt.ylabel('mean_absolute_error')
-        plt.xlabel('Epoch')
-        plt.legend(['Train','Validation'],loc = 'upper left')
-        plt.show()
-
-    def show_loss(self):
-
-        plt.plot(self.history.history['loss'])
-        plt.plot(self.history.history['val_loss'])
-        plt.title('Model loss')
-        plt.ylabel('Loss')
-        plt.xlabel('Epoch')
-        plt.legend(['Train','Validation'],loc = 'upper left')
-        plt.show()
-
+# class VisualModel:
+#
+#     def __init__(self,history):
+#         self.history = history
+#
+#     def show_metrics(self):
+#
+#         plt.plot(self.history.history['mean_absolute_error'])
+#         plt.plot(self.history.history['val_mean_absolute_error'])
+#         plt.title('Model mean_absolute_error')
+#         plt.ylabel('mean_absolute_error')
+#         plt.xlabel('Epoch')
+#         plt.legend(['Train','Validation'],loc = 'upper left')
+#         plt.show()
+#
+#     def show_loss(self):
+#
+#         plt.plot(self.history.history['loss'])
+#         plt.plot(self.history.history['val_loss'])
+#         plt.title('Model loss')
+#         plt.ylabel('Loss')
+#         plt.xlabel('Epoch')
+#         plt.legend(['Train','Validation'],loc = 'upper left')
+#         plt.show()
+#
 
 #
 #
@@ -579,6 +596,9 @@ class DeepSet():
         from tensorflow.keras.models import load_model as tf_load_model
         self.rho = tf_load_model(path+name)
 
+
+
+
     def model_builder(self,hp):
 
         model = self.rho_builder(hp)
@@ -638,7 +658,9 @@ class DeepSet():
 
         return rho
 
-    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=400,epochs=400,num_best_model=1):
+#    def get_best_model(self,X,Y,X_val,Y_val,max_epochs=400,epochs=400,num_best_model=1):
+
+    def get_best_model(self,X,Y,max_epochs=400,epochs=400,num_best_model=1):
 
         import datetime
         import os
@@ -657,7 +679,7 @@ class DeepSet():
 
         project_name = 'model_regressor'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
 
-        tuner = kt.Hyperband(self.model_builder,
+        tuner = kt.Hyperband(_model_builder,
                      objective='val_loss',
                      max_epochs=max_epochs,
                      directory=directory,
@@ -666,7 +688,8 @@ class DeepSet():
 
         stop_early = tf.keras.callbacks.EarlyStopping(monitor='val_loss', patience=30)
 
-        tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
+        tuner.search(X,Y, epochs=epochs, validation_split=0.2, callbacks=[stop_early])
+    #    tuner.search(X,Y, epochs=epochs, validation_data=(X_val,Y_val), callbacks=[stop_early])
 
         model = tuner.get_best_models(num_models=num_best_model)
 
@@ -964,3 +987,121 @@ class DeepSet():
         self.rho.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = learning_rate),
                           loss='mean_squared_error',
                           metrics=['mean_absolute_error'])
+
+
+
+
+def _model_builder(hp):
+
+    model = _DeepSetSecondOrder(hp)
+    hp_learning_rate = hp.Choice('learning_rate', values=[1e-4,1e-5,1e-6])
+
+    model.compile(optimizer=tf.keras.optimizers.Adam(learning_rate = hp_learning_rate),
+                      loss='mse',
+                      metrics=[tf.keras.metrics.RootMeanSquaredError(),'mae'])
+
+    return model
+
+
+def _build_phi(hp,input_atom_dim=33):
+
+    input_atom = Input(shape = (33))
+    x = Dense(hp.Int('units_-1',min_value = 32,max_value = 512,step = 32),activation='relu')(input_atom)
+    layers = hp.Int('layers_1',min_value = 3,max_value = 25,step = 1)
+    dropout_batch = hp.Choice('dropout_batch_phi',[True,False])
+    for layer in range(layers):
+        x = Dense(hp.Int('units_'+str(layer),min_value = 32,max_value = 512,step = 32),activation='relu')(x)
+        if dropout_batch:
+            x = BatchNormalization()(x)
+            x = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(x)
+
+    x = Dense(300,activation='linear')(x)
+
+    phi = Model(inputs = input_atom,outputs = x)
+    layers = layers +1
+    return phi
+
+def _build_rho(hp):
+
+    atom_representation = Input(shape = (300,))
+    y = Dense(hp.Int('units_-10',min_value = 32,max_value = 512,step = 32),activation='relu')(atom_representation)
+    dropout_batch = hp.Choice('dropout_batch_rho',[True,False])
+    layers = hp.Int('layers_2',min_value = 8,max_value = 23,step = 1)
+    for layer in range(layers):
+        y = Dense(hp.Int('units0_'+str(+layer),min_value = 32,max_value = 1024,step = 32),activation='relu')(y)
+        if dropout_batch:
+            y = BatchNormalization()(y)
+            y = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(y)
+
+    #activity_regularizer = hp.Choice('regularizer_rho',['l1','l2'])
+    #output = Dense(1,activation = "sigmoid",activity_regularizer = activity_regularizer)(y)
+    y = Dense(hp.Int('units0_'+str(+layer+1),min_value = 32,max_value = 512,step = 32),activation='relu')(y)
+    output = Dense(1,activation = "relu",activity_regularizer = 'l2')(y)
+    rho = Model(inputs = atom_representation,outputs = output)
+
+    return rho
+
+def _build_phi_int(hp,input_atom_dim=33):
+
+    input_atom = Input(shape = (33))
+    x = Dense(hp.Int('units_-11',min_value = 32,max_value = 512,step = 32),activation='relu')(input_atom)
+    layers = hp.Int('layers_1',min_value = 1,max_value = 10,step = 1)
+    dropout_batch = hp.Choice('dropout_batch_phi',[True,False])
+    for layer in range(layers):
+        x = Dense(hp.Int('units_1'+str(layer),min_value = 32,max_value = 512,step = 32),activation='relu')(x)
+        if dropout_batch:
+            x = BatchNormalization()(x)
+            x = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(x)
+
+    x = Dense(300,activation='linear')(x)
+
+    phi = Model(inputs = input_atom,outputs = x)
+    layers = layers +1
+    return phi
+
+def _build_rho_int(hp):
+
+    atom_representation = Input(shape = (300,))
+    y = Dense(hp.Int('units_-10',min_value = 32,max_value = 512,step = 32),activation='relu')(atom_representation)
+    dropout_batch = hp.Choice('dropout_batch_rho',[True,False])
+    layers = hp.Int('layers_20',min_value = 1,max_value = 10,step = 1)
+    for layer in range(layers):
+        y = Dense(hp.Int('units1_1'+str(layer),min_value = 32,max_value = 1024,step = 32),activation='relu')(y)
+        if dropout_batch:
+            y = BatchNormalization()(y)
+            y = Dropout(hp.Float('dropout',0,0.4,step = 0.2))(y)
+
+    #activity_regularizer = hp.Choice('regularizer_rho',['l1','l2'])
+    #output = Dense(1,activation = "sigmoid",activity_regularizer = activity_regularizer)(y)
+    y = Dense(hp.Int('units1_1'+str(layer+1),min_value = 32,max_value = 512,step = 32),activation='relu')(y)
+    output = Dense(1,activation = "linear",activity_regularizer = 'l2')(y)
+    rho = Model(inputs = atom_representation,outputs = output)
+
+    return rho
+
+
+
+class _DeepSetSecondOrder(tf.keras.Model):
+
+    def __init__(self,hp):
+        super(_DeepSetSecondOrder,self).__init__()
+        self.phi = _build_phi(hp)
+        self.rho = _build_rho(hp)
+        self.phi_int = _build_phi_int(hp)
+        self.rho_int = _build_rho_int(hp)
+
+    def call(self,atom_interaction_input):
+
+        atoms_input = atom_interaction_input[:-1]
+        interactions_input = atom_interaction_input[-1]
+
+        phi_outputs = [self.phi(input) for input in atoms_input]
+        linear_representation = Add()(phi_outputs)
+
+        interaction_outputs = [self.rho_int(Add()([self.phi_int(input[0]),self.phi_int(input[1])])) for input in interactions_input]
+        interactions_represetation = Add()(interaction_outputs)
+
+        material_representation = Add()([linear_representation,interactions_represetation])
+        rho_output = self.rho(material_representation)
+
+        return rho_output
