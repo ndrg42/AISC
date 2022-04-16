@@ -63,21 +63,18 @@ def build_phi(input,layers,output):
 
     output = Dense(**output)(x)
 
-    return Model(inputs = input_atom,outputs = output)
+    return Model(inputs =input_atom,outputs = output)
 
-def build_rho(latent_dim,mode='regression'):
+def build_rho(input,layers,output):
     """Return rho model of rho(sum_i phi(atom_i))"""
 
-    atom_representation = Input(shape = (latent_dim,))
-    x = Dense(300,activation = "relu")(atom_representation)
-    x = Dense(300,activation = "relu")(x)
+    atom_representation = Input(shape = (input,))
+    x = atom_representation
 
-    if mode == 'regression':
-        activation = 'relu'
-    if mode == 'classification':
-        activation = 'sigmoid'
+    for layer in layers:
+        x = Dense(**layer)(x)
 
-    output = Dense(1,activation = activation,activity_regularizer = 'l1')(x)
+    output = Dense(**output)(x)
 
     return Model(inputs = atom_representation,outputs = output)
 
@@ -103,10 +100,10 @@ def get_linear_deepset_classifier(input_dim = 32,latent_dim=300,learning_rate=0.
 class DeepSetModel(tf.keras.Model):
     """DeepSet model"""
 
-    def __init__(self,input_dim,latent_dim,model_setup,mode='regression'):
+    def __init__(self,phi_setup=model_config['phi setup'],rho_setup=model_config['regressor rho setup']):
         super(DeepSetModel,self).__init__()
-        self.phi = build_phi(**model_setup)#input_dim,latent_dim)
-        self.rho = build_rho(latent_dim,mode)
+        self.phi = build_phi(**phi_setup)
+        self.rho = build_rho(**rho_setup)
 
 
     def call(self,atoms_input):
@@ -117,9 +114,9 @@ class DeepSetModel(tf.keras.Model):
 
         return rho_output
 
-def get_deepset_regressor(input_dim = 33,latent_dim=300,learning_rate=0.001):
+def get_deepset_regressor(phi_setup=model_config['phi setup'],rho_setup=model_config['regressor rho setup'],learning_rate=0.001):
 
-    regressor_deepset = DeepSetModel(input_dim,latent_dim,mode = 'regression')
+    regressor_deepset = DeepSetModel(phi_setup,rho_setup)
     regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
                               loss= 'mean_squared_error',
                               metrics=['mean_absolute_error',RootMeanSquaredError()]
@@ -193,10 +190,11 @@ class DeepSetSecondOrder(DeepSetModel):
 
 
 with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
+    #Load a dictionary contaning the model's name and the function to initialize them
     avaible_model = yaml.load(file,Loader)
 
 def get_model(model='classifier'):
-    """Retrive and return the specified model using avaible_model (dcit) as a switch controll"""
+    """Retrive and return the specified model using avaible_model (dcit) as a switch controll."""
 
     model_builder = avaible_model.get(model)
     try:
