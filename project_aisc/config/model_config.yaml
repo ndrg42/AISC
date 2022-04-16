@@ -1,4 +1,5 @@
 input shape: &input_shape 33
+linear input shape: &linear_input_shape 32
 latent dim: &latent_dim 300
 
 phi setup:
@@ -16,3 +17,37 @@ regressor rho setup:
     - {'units': 300,'activation':'relu'}
     - {'units': 300,'activation':'relu'}
   output: {'units': 1, 'activation':'relu', 'activity_regularizer':'l1'}
+
+regressor setup:
+  optimizer: !!python/name:tensorflow.keras.optimizers.Adam
+  learning rate: 0.001
+  loss: 'mean_squared_error'
+  metrics:
+    - 'mean_absolute_error'
+    - !!python/name:tensorflow.keras.metrics.RootMeanSquaredError
+
+
+classifier rho setup:
+  input: *latent_dim
+  layers:
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+  output: {'units': 1, 'activation':'sigmoid', 'activity_regularizer':'l1'}
+
+
+classifier setup:
+  optimizer: !!python/name:tensorflow.keras.optimizers.Adam
+  learning rate: 0.001
+  loss: 'binary_crossentropy'
+  metrics:
+    - 'accuracy'
+    - !!python/name:tensorflow.keras.metrics.Precision
+
+linear phi setup:
+  input: *linear_input_shape
+  layers:
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+  output: {'units': *latent_dim, 'activation':'linear', 'activity_regularizer':'l1'}
