@@ -114,13 +114,17 @@ class DeepSetModel(tf.keras.Model):
 
         return rho_output
 
-def get_deepset_regressor(phi_setup=model_config['phi setup'],rho_setup=model_config['regressor rho setup'],learning_rate=0.001):
+def get_deepset_regressor(phi_setup = model_config['phi setup'],
+                          rho_setup = model_config['regressor rho setup'],
+                          regressor_setup = model_config['regressor setup'],
+                          ):
 
     regressor_deepset = DeepSetModel(phi_setup,rho_setup)
-    regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
-                              loss= 'mean_squared_error',
-                              metrics=['mean_absolute_error',RootMeanSquaredError()]
+    regressor_deepset.compile(optimizer= regressor_setup['optimizer'](regressor_setup['learning rate']),
+                              loss= regressor_setup['loss'],
+                              metrics=[metric if isinstance(metric, str) else metric() for metric in regressor_setup['metrics']],
                               )
+
     return regressor_deepset
 
 
