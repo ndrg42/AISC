@@ -80,19 +80,22 @@ def build_rho(input,layers,output):
 
 def get_linear_deepset_regressor(input_dim = 32,latent_dim=300,learning_rate=0.001):
 
-    linear_regressor_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'regression')
+    linear_regressor_deepset = LinearDeepSetModel(input_dim,latent_dim,mode = 'regression')
     linear_regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
                               loss= 'mean_squared_error',
                               metrics=['mean_absolute_error',RootMeanSquaredError()]
                               )
     return linear_regressor_deepset
 
-def get_linear_deepset_classifier(input_dim = 32,latent_dim=300,learning_rate=0.001):
+def get_linear_deepset_classifier(phi_setup = model_config['linear phi setup'],
+                                  rho_setup = model_config['classifier rho setup'],
+                                  classifier_setup = model_config['classifier setup'],
+                                  ):
 
-    classifier_deepset = DeepSetLinearModel(input_dim,latent_dim,mode = 'classification')
-    classifier_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
-                              loss= 'binary_crossentropy',
-                              metrics=['accuracy', Precision()]
+    classifier_deepset = LinearDeepSetModel(phi_setup,rho_setup)
+    classifier_deepset.compile(optimizer= classifier_setup['optimizer'](classifier_setup['learning rate']),
+                               loss= classifier_setup['loss'],
+                               metrics=[metric if isinstance(metric, str) else metric() for metric in classifier_setup['metrics']],
                               )
     return classifier_deepset
 
@@ -129,22 +132,27 @@ def get_deepset_regressor(phi_setup = model_config['phi setup'],
 
 
 def get_deepset_classifier(phi_setup = model_config['phi setup'],
-                          rho_setup = model_config['classifier rho setup'],
-                          classifier_setup = model_config['classifier setup'],
+                           rho_setup = model_config['classifier rho setup'],
+                           classifier_setup = model_config['classifier setup'],
                           ):
 
     classifier_deepset = DeepSetModel(phi_setup,rho_setup)
     classifier_deepset.compile(optimizer= classifier_setup['optimizer'](classifier_setup['learning rate']),
-                              loss= classifier_setup['loss'],
-                              metrics=[metric if isinstance(metric, str) else metric() for metric in classifier_setup['metrics']],
+                               loss= classifier_setup['loss'],
+                               metrics=[metric if isinstance(metric, str) else metric() for metric in classifier_setup['metrics']],
                               )
     return classifier_deepset
 
 
-class DeepSetLinearModel(DeepSetModel):
+class LinearDeepSetModel(tf.keras.Model):
+    """Linear Deep Set model"""
 
-    def __init__(self,input_dim,latent_dim,mode='regression'):
-        super(DeepSetLinearModel,self).__init__(input_dim,latent_dim,mode)
+    def __init__(self,phi_setup=model_config['linear phi setup'],rho_setup=model_config['regressor rho setup']):
+        super(LinearDeepSetModel,self).__init__()
+        self.phi = build_phi(**phi_setup)
+        self.rho = build_rho(**rho_setup)
+
+
 
     def call(self,atoms_input):
 
