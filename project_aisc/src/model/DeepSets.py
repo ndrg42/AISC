@@ -78,13 +78,16 @@ def build_rho(input,layers,output):
 
     return Model(inputs = atom_representation,outputs = output)
 
-def get_linear_deepset_regressor(input_dim = 32,latent_dim=300,learning_rate=0.001):
+def get_linear_deepset_regressor(phi_setup = model_config['linear phi setup'],
+                                 rho_setup = model_config['regressor rho setup'],
+                                 regressor_setup = model_config['regressor setup'],
+                                  ):
 
-    linear_regressor_deepset = LinearDeepSetModel(input_dim,latent_dim,mode = 'regression')
-    linear_regressor_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
-                              loss= 'mean_squared_error',
-                              metrics=['mean_absolute_error',RootMeanSquaredError()]
-                              )
+    linear_regressor_deepset = LinearDeepSetModel(phi_setup,rho_setup)
+    linear_regressor_deepset.compile(optimizer= regressor_setup['optimizer'](regressor_setup['learning rate']),
+                                     loss= regressor_setup['loss'],
+                                     metrics=[metric if isinstance(metric, str) else metric() for metric in regressor_setup['metrics']],
+                                      )
     return linear_regressor_deepset
 
 def get_linear_deepset_classifier(phi_setup = model_config['linear phi setup'],
