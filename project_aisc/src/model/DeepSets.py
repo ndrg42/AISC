@@ -128,12 +128,15 @@ def get_deepset_regressor(phi_setup = model_config['phi setup'],
     return regressor_deepset
 
 
-def get_deepset_classifier(input_dim = 33,latent_dim=300,learning_rate=0.001,model_setup=model_config['phi setup']):
+def get_deepset_classifier(phi_setup = model_config['phi setup'],
+                          rho_setup = model_config['classifier rho setup'],
+                          classifier_setup = model_config['classifier setup'],
+                          ):
 
-    classifier_deepset = DeepSetModel(input_dim,latent_dim,mode='classification',model_setup = model_setup)
-    classifier_deepset.compile(optimizer= Adam(learning_rate = learning_rate),
-                              loss= 'binary_crossentropy',
-                              metrics=['accuracy', Precision()]
+    classifier_deepset = DeepSetModel(phi_setup,rho_setup)
+    classifier_deepset.compile(optimizer= classifier_setup['optimizer'](classifier_setup['learning rate']),
+                              loss= classifier_setup['loss'],
+                              metrics=[metric if isinstance(metric, str) else metric() for metric in classifier_setup['metrics']],
                               )
     return classifier_deepset
 
