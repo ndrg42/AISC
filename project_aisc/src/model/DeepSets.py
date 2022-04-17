@@ -27,9 +27,9 @@ from mendeleev import element
 import pandas as pd
 sys.path.append('../data')
 sys.path.append('../features')
-import DataLoader
-import Processing
-from Processing import DataProcessor
+import make_dataset
+import build_features
+from build_features import DataProcessor
 import datetime
 import kerastuner as kt
 from kerastuner.tuners import Hyperband

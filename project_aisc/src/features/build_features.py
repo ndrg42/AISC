@@ -4,7 +4,6 @@ import seaborn as sns
 import matplotlib.pyplot as plt
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
 from sklearn import preprocessing
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -13,20 +12,22 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split as np_train_test_split
 import sys
 sys.path.append('../data')
-#import DataLoader
+#import make_dataset
 
 #Add input method in SuperConData
 #Add analitic dataset in SuperConData
 #add remove douplicated row in SuperConData
 #Add test for method in AtomData
 #Add test for method in SuperConData
+#Check analytical dataset
+#Put in another file the function
 
 class AtomData():
     """Class that holds the data of the periodic table and processes them.
 
         Categorical data is encoded with both natural number mapping and one hot encoding.
         Numerical data is impotated with the mean value and standardized.
-        Lanthanides and antanides have group set equal to 0 before processing
+        Lanthanides and antanides have group set equal to 0 before build_features
 
         Attributes:
             periodic_table: pandas DataFrame that holds non processed data
@@ -117,7 +118,7 @@ class AtomData():
                       self.periodic_table[feature].dtype in ['int64', 'float64','int32', 'float32']]
 
         # Lanthanides and antanides don't have group.
-        # We choose to set them to 0 before processing (it's an unique value for them)
+        # We choose to set them to 0 before build_features (it's an unique value for them)
 
         if 'group_id' in numerical_columns:
             self.periodic_table.loc[:,'group_id'] = self.periodic_table['group_id'].fillna(0)
@@ -370,7 +371,7 @@ class DataProcessor():
 
     def get_input(self,compound):
         from mendeleev import element
-        from DataLoader import from_string_to_dict
+        from make_dataset import from_string_to_dict
 
         d= []
         from_string_to_dict(compound,d)
@@ -456,8 +457,8 @@ class DataProcessor():
         X_train_num = self.ptable[numerical_cols].copy()
         # Imputation
         my_imputer = SimpleImputer(strategy='mean')
-        # transformer = preprocessing.Normalizer(norm = 'max')
-        transformer = preprocessing.StandardScaler()
+        # transformer = prebuild_features.Normalizer(norm = 'max')
+        transformer = prebuild_features.StandardScaler()
         imputed_X_train_num = pd.DataFrame(my_imputer.fit_transform(X_train_num))
         imputed_X_train_num = pd.DataFrame(transformer.fit_transform(imputed_X_train_num))
 
