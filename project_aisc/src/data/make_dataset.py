@@ -5,22 +5,18 @@ from mendeleev import element
 from mendeleev import get_table
 import sys
 sys.path.append('src/features')
-import DataLoader
+import make_dataset
 from Processing import remove_columns_with_missing_elements
 
 
-#DataLoader.py rename into make_dataset.py
+#make_dataset.py rename into make_dataset.py
 #deve contenere solo routine per generare/scaricare/caricare nel giusto formato
 #i dati raw
 
-#SuperCon -> cambio nome in accordo con standard python get_supercon
-#PeriodicTable ->troppo lungo, fa troppe cose.
-#    troppi elementi mancanti -> funzione a se
-#    caricare altri dataset singoli - funzione a parte
-#    merge i dataset -> funzione a parte
-#CreateSuperCon -> rename ed uso di chela(per ora da cambiare la string formula in material, da valutare poi)
+#SuperCon -> Da cambiare nome
+#PeriodicTable ->Da cambiare nome
+#CreateSuperCon -> Da cambiare nome
 #from_string_to_dict -> da cancellare, non serve più. è spostato nel pacchetto chela
-#normalize_formula -> va spostato in features
 
 #Change name according python standard
 def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
@@ -285,7 +281,7 @@ def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element
 
 
 
-# 
+#
 # def from_string_to_dict(string,lista):
 #     """add to a list tuples containing elements and the relative quantity presence
 #
