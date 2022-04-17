@@ -7,7 +7,7 @@
 from sklearn.model_selection import train_test_split
 import matplotlib.pyplot as plt
 import tensorflow as tf
-#
+
 # physical_devices = tf.config.list_physical_devices('GPU')
 # tf.config.experimental.set_memory_growth(physical_devices[0], True)
 # tf.config.experimental.set_synchronous_execution(False)
@@ -36,21 +36,10 @@ from kerastuner.tuners import Hyperband
 import yaml
 from yaml import Loader
 
-#Implement class best Model
-#Implement config file
 
 with open('/home/claudio/AISC/project_aisc/config/model_config.yaml') as file:
     model_config = yaml.load(file,Loader)
 
-# def build_phi(input_dim,latent_dim):
-#     """Return phi model of rho(sum_i phi(atom_i))"""
-#
-#     input_atom = Input(shape = (input_dim,))
-#     x = Dense(300,activation = "relu")(input_atom)
-#     x = Dense(300,activation = "relu")(x)
-#     output = Dense(latent_dim,activation = "linear",activity_regularizer = 'l1')(x)
-#
-#     return Model(inputs = input_atom,outputs = output)
 
 def build_phi(input,layers,output):
     """Return phi model of rho(sum_i phi(atom_i))"""
@@ -78,6 +67,67 @@ def build_rho(input,layers,output):
 
     return Model(inputs = atom_representation,outputs = output)
 
+
+class DeepSetModel(tf.keras.Model):
+    """DeepSet model"""
+
+    def __init__(self,phi_setup=model_config['phi setup'],rho_setup=model_config['regressor rho setup']):
+        super(DeepSetModel,self).__init__()
+        self.phi = build_phi(**phi_setup)
+        self.rho = build_rho(**rho_setup)
+
+
+    def call(self,atoms_input):
+
+        phi_outputs = [self.phi(input) for input in atoms_input]
+        material_representation = Add()(phi_outputs)
+        rho_output = self.rho(material_representation)
+
+        return rho_output
+
+
+
+class LinearDeepSetModel(tf.keras.Model):
+    """Linear Deep Set model"""
+
+    def __init__(self,phi_setup=model_config['linear phi setup'],rho_setup=model_config['regressor rho setup']):
+        super(LinearDeepSetModel,self).__init__()
+        self.phi = build_phi(**phi_setup)
+        self.rho = build_rho(**rho_setup)
+
+    def call(self,atoms_input):
+
+        phi_outputs = [Multiply()([tf.expand_dims(input[:,-1],1),self.phi(input[:,:-1])]) for input in atoms_input]
+        material_representation = Add()(phi_outputs)
+        rho_output = self.rho(material_representation)
+
+        return rho_output
+
+
+
+def build_vanilla_nn(input,layers,output):
+    """Vanilla neural network that takes as input an engineered fatures input"""
+
+    model = tf.keras.Sequential()
+    model.add(Dense(**input))
+
+    for layer in layers:
+        model.add(Dense(**layer))
+
+    model.add(Dense(**output))
+
+    return model
+
+def get_vanilla_nn_regressor(nn_setup = model_config['neural network setup'],
+                             regressor_setup = model_config['regressor neural network setup'],
+                             ):
+    model = build_vanilla_nn(**nn_setup)
+    model.compile(optimizer= regressor_setup['optimizer'](regressor_setup['learning rate']),
+                                     loss= regressor_setup['loss'],
+                                     metrics=[metric if isinstance(metric, str) else metric() for metric in regressor_setup['metrics']],
+                                      )
+    return model
+
 def get_linear_deepset_regressor(phi_setup = model_config['linear phi setup'],
                                  rho_setup = model_config['regressor rho setup'],
                                  regressor_setup = model_config['regressor setup'],
@@ -102,23 +152,6 @@ def get_linear_deepset_classifier(phi_setup = model_config['linear phi setup'],
                               )
     return classifier_deepset
 
-
-class DeepSetModel(tf.keras.Model):
-    """DeepSet model"""
-
-    def __init__(self,phi_setup=model_config['phi setup'],rho_setup=model_config['regressor rho setup']):
-        super(DeepSetModel,self).__init__()
-        self.phi = build_phi(**phi_setup)
-        self.rho = build_rho(**rho_setup)
-
-
-    def call(self,atoms_input):
-
-        phi_outputs = [self.phi(input) for input in atoms_input]
-        material_representation = Add()(phi_outputs)
-        rho_output = self.rho(material_representation)
-
-        return rho_output
 
 def get_deepset_regressor(phi_setup = model_config['phi setup'],
                           rho_setup = model_config['regressor rho setup'],
@@ -145,25 +178,6 @@ def get_deepset_classifier(phi_setup = model_config['phi setup'],
                                metrics=[metric if isinstance(metric, str) else metric() for metric in classifier_setup['metrics']],
                               )
     return classifier_deepset
-
-
-class LinearDeepSetModel(tf.keras.Model):
-    """Linear Deep Set model"""
-
-    def __init__(self,phi_setup=model_config['linear phi setup'],rho_setup=model_config['regressor rho setup']):
-        super(LinearDeepSetModel,self).__init__()
-        self.phi = build_phi(**phi_setup)
-        self.rho = build_rho(**rho_setup)
-
-
-
-    def call(self,atoms_input):
-
-        phi_outputs = [Multiply()([tf.expand_dims(input[:,-1],1),self.phi(input[:,:-1])]) for input in atoms_input]
-        material_representation = Add()(phi_outputs)
-        rho_output = self.rho(material_representation)
-
-        return rho_output
 
 def get_deepsetsecondorder_regressor(input_atom_dim = 33,
                                      input_interaction_dim=33,
