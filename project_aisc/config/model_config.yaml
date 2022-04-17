@@ -51,3 +51,19 @@ linear phi setup:
     - {'units': 300,'activation':'relu'}
     - {'units': 300,'activation':'relu'}
   output: {'units': *latent_dim, 'activation':'linear', 'activity_regularizer':'l1'}
+
+neural network setup:
+  input: {'units':300,'input_shape': !!python/tuple [80,]}
+  layers:
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+    - {'units': 300,'activation':'relu'}
+  output: {'units': 1, 'activation': 'relu', 'activity_regularizer': 'l1'}
+
+regressor neural network setup:
+  optimizer: !!python/name:tensorflow.keras.optimizers.Adam
+  learning rate: 0.001
+  loss: 'mean_squared_error'
+  metrics:
+    - 'mean_absolute_error'
+    - !!python/name:tensorflow.keras.metrics.RootMeanSquaredError
