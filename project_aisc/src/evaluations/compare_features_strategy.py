@@ -51,8 +51,7 @@ def main():
 
     file_model_config.close()
     n_cycles = 1
-    supercon_processor.build_analitic_dataset()
-    analytical_supercon_dataset_processed = supercon_processor.analytical_supercon_dataset_processed
+    analytical_supercon_dataset_processed = supercon_processor.get_analytical_dataset()
     nn_score = {}
     for i in range(n_cycles):
         X,X_test,Y,Y_test = sk.model_selection.train_test_split(analytical_supercon_dataset_processed,tc_regression,test_size=0.2)
