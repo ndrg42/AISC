@@ -1,4 +1,4 @@
-#
+
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -225,14 +225,30 @@ with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as
     #Load a dictionary contaning the model's name and the function to initialize them
     avaible_model = yaml.load(file,Loader)
 
-def get_model(model='classifier'):
-    """Retrive and return the specified model using avaible_model (dcit) as a switch controll."""
+def get_model(model_name='classifier',model_config = None):
+    """Retrive and return the specified model using avaible_model (dict) as a switch controll."""
 
-    model_builder = avaible_model.get(model)
-    try:
-        return model_builder()
-    except:
-        print('Model not found.')
+    model_builder = avaible_model.get(model_name)
+
+    if model_config is None:
+        try:
+            return model_builder()
+        except:
+            print('Model not found.')
+    else:
+        try:
+            return model_builder(*model_config_initializer(model_config = model_config,model_name = model_name))
+        except:
+            print('Model not found.')
+
+
+def model_config_initializer(model_config,model_name):
+
+    if 'nn' in model_name:
+        return model_config['neural network setup'], model_config['regressor neural network setup']
+    else:
+        return model_config['phi setup'],model_config[model_name +' rho setup'],model_config[model_name +' setup']
+
 
 
 
