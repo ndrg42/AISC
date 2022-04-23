@@ -249,6 +249,14 @@ class SuperConData():
 
         return expanded_row
 
+    def get_analytical_dataset(self):
+        """Return dataset ready for model"""
+
+        if self.analytical_supercon_dataset_processed is None:
+            self.build_analytical_dataset()
+
+        return self.analytical_supercon_dataset_processed
+
     def build_analitic_dataset(self):
 
         supercon_dataset = self.supercon_dataset.copy()
