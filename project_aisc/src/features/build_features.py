@@ -257,7 +257,7 @@ class SuperConData():
 
         return self.analytical_supercon_dataset_processed
 
-    def build_analitic_dataset(self):
+    def build_analytical_dataset(self):
 
         supercon_dataset = self.supercon_dataset.copy()
         #We keep only chemical symbol columns(are 96)
