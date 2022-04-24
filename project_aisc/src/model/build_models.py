@@ -103,6 +103,22 @@ class LinearDeepSetModel(tf.keras.Model):
 
         return rho_output
 
+    def material_representation(self,atoms_input):
+
+        phi_outputs = [Multiply()([tf.expand_dims(input[:,-1],1),self.phi(input[:,:-1])]) for input in atoms_input]
+        material_output = Add()(phi_outputs)
+
+        return material_output
+
+    def atom_representation(self,atoms_input):
+
+        atom_output = [self.phi(input[:,:-1]) for input in atoms_input][0]
+
+        return atom_output
+
+
+
+
 
 
 def build_vanilla_nn(input,layers,output):
@@ -246,6 +262,9 @@ def model_config_initializer(model_config,model_name):
 
     if 'nn' in model_name:
         return model_config['neural network setup'], model_config['regressor neural network setup']
+    if 'linear' in model_name:
+        model_name = model_name.replace('linear ','')
+        return model_config['linear phi setup'],model_config[model_name +' rho setup'],model_config[model_name +' setup']
     else:
         return model_config['phi setup'],model_config[model_name +' rho setup'],model_config[model_name +' setup']
 
