@@ -379,7 +379,7 @@ class DataProcessor():
 
     def get_input(self,compound):
         from mendeleev import element
-        from make_dataset import from_string_to_dict
+        from chela.formula_handler import from_string_to_dict
 
         d= []
         from_string_to_dict(compound,d)
@@ -466,7 +466,7 @@ class DataProcessor():
         # Imputation
         my_imputer = SimpleImputer(strategy='mean')
         # transformer = prebuild_features.Normalizer(norm = 'max')
-        transformer = prebuild_features.StandardScaler()
+        transformer = preprocessing.StandardScaler()
         imputed_X_train_num = pd.DataFrame(my_imputer.fit_transform(X_train_num))
         imputed_X_train_num = pd.DataFrame(transformer.fit_transform(imputed_X_train_num))
 
