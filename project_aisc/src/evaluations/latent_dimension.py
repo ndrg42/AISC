@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 sys.path.append('/home/claudio/AISC/project_aisc/src/data')
 sys.path.append('/home/claudio/AISC/project_aisc/src/features')
@@ -8,15 +10,12 @@ import build_models
 import tensorflow as tf
 import yaml
 from yaml import Loader
-import importlib
-importlib.reload(build_models)
 import seaborn as sns
 import numpy as np
-from mendeleev import element
 import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
-import os
+import mendeleev
 
 def latent_parser():
 
@@ -52,8 +51,6 @@ def latent_parser():
 
 
 def main():
-
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
     with open('/home/claudio/AISC/project_aisc/config/latent_dimension_config.yaml') as file:
         model_config = yaml.load(file,Loader)
@@ -112,13 +109,14 @@ def main():
 
     materials_representation = model.material_representation(supercon_processed)
 
-    elements = [element(i).symbol for i in range(1,97)]
+    elements = [mendeleev.element(i).symbol for i in range(1,97)]
 
     elements_dataframe = pd.DataFrame(np.eye(96),columns = elements)
     atoms_processor = build_features.SuperConData(atom_processed,elements_dataframe)
     #Process SuperCon data
     atoms_processed = atoms_processor.get_dataset()
 
+    atoms_representation = pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=elements,columns=['latent feature'])
     fig,axs = plt.subplots(1,2, figsize=(11,8))
 
     sns.histplot(x = np.reshape(materials_representation.numpy(),(-1,)), hue = mask_temperature_materials, ax = axs[0])
@@ -126,15 +124,23 @@ def main():
     axs[0].set_xlabel('Latent feature')
     axs[0].legend(legend_latent_space)
 
-    sns.scatterplot(data = pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=range(1,97)), ax = axs[1])
+    sns.scatterplot(data = atoms_representation,x = 'latent feature', y = range(1,97), ax = axs[1])
     axs[1].set_title('Atomic Latent Representation')
-    axs[1].set_xlabel('Atomic number')
-    axs[1].set_ylabel('Latent feature')
-    axs[1].get_legend().remove()
+    axs[1].set_xlabel('Latent feature')
+    axs[1].set_ylabel('Atomic number')
+    axs[1].set_yticks([])
+
+    for line in range(0,atoms_representation.shape[0]):
+         axs[1].text(x = atoms_representation.iloc[line] + 0.02,
+                     y = line+1,
+                     s = elements[line],
+                     fontsize = 8,
+                    )
+
 
     plt.show()
-    print(pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=elements,columns = ['Latent representation']).to_string())
-
+    #print(pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=elements,columns = ['Latent representation']).to_string())
+    print(atoms_representation)
 
 if __name__ == '__main__':
     main()
