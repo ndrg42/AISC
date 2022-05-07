@@ -61,6 +61,7 @@ def main():
 
     len_argv = len(sys.argv)
     model_config = None
+    model_config_path = None
 
     if len_argv > 1:
         args = train_parser()
