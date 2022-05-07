@@ -1,4 +1,3 @@
-
 import pandas as pd
 import numpy as np
 from mendeleev import element
@@ -6,7 +5,7 @@ from mendeleev import get_table
 import sys
 sys.path.append('src/features')
 import make_dataset
-from Processing import remove_columns_with_missing_elements
+from build_features import remove_columns_with_missing_elements
 
 
 #make_dataset.py rename into make_dataset.py
@@ -252,7 +251,7 @@ def merge_periodic_table_data(features_and_scale,atomic_dataset_dict,periodic_ta
 #         sc_dataframe.drop(axis=1,inplace=True,columns=['material'])
 #     return sc_dataframe
 #     #sc_dataframe.to_csv('../../data/raw/'+name,index = False)
-from chela import csv_to_dataframe
+from chela.formula_handler import build_dataframe
 
 def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
     """Create a dataset of superconductor and non-superconducting materials
@@ -261,11 +260,11 @@ def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element
         material (bool): a flag used to indicate if keep or not the material column
         name (str): the name of the saved file (default is supercon_tot.csv)
     """
-
-    supercon = csv_to_dataframe(path)
+    data = pd.read_csv(path)
+    supercon = build_dataframe(data)
     #We use material as label for chemical formulas
     supercon = supercon.rename(columns = {'formula':'material'})
-    #chela.csv_to_dataframe create a dataframe with 1-118 chemical elements
+    #build_dataframe create a dataframe with 1-118 chemical elements
     #but we want only the first 96
     chemical_elements_to_drop = supercon.columns[96:118]
     supercon = supercon.drop(columns = chemical_elements_to_drop)
