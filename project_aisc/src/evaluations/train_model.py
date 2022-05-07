@@ -37,10 +37,19 @@ def train_parser():
                                    The model need to be specified"""
     )
 
+    my_parser.add_argument('-save',
+                           action = 'store',
+                           nargs = '?',
+                           help = "Save the results into a folder ",
+    )
+
     #Parse the args
     args = my_parser.parse_args()
 
     return args
+
+def save_results():
+    pass
 
 
 def main():
