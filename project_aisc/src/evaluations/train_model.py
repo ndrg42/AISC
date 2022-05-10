@@ -1,3 +1,5 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 sys.path.append('src/data')
 sys.path.append('src/features')
@@ -49,7 +51,18 @@ def train_parser():
     return args
 
 def save_results():
-    pass
+
+    import datetime
+    date = datetime.datetime.now()
+
+    directory = '/home/claudio/AISC/project_aisc/data/experiments/experiment_'+date.strftime("%d")+"-"+date.strftime("%m")
+    #Flag to check if an experiment and relative directory containing that data is alredy present
+    today_experiment = os.path.isdir(directory)
+
+    if not today_experiment:
+        os.makedirs(directory)
+
+    project_name = 'model_regressor'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
 
 
 def main():
@@ -84,7 +97,8 @@ def main():
         tc = sc_dataframe['critical_temp']
 
     elif 'classifier' in model_name:
-        tc = np.where(sc_dataframe['critical_temp']>0,1,0)
+        #tc = np.where(sc_dataframe['critical_temp']>0,1,0)
+        tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
     if model_config_path is not None:
         model_config_path = model_config_path[0]
@@ -107,6 +121,7 @@ def main():
     #Print the metric and the relative score of the model
     for name,value in zip(metrics_name,score):
         print(name+':',value)
+        
 
 if __name__ == '__main__':
     main()
