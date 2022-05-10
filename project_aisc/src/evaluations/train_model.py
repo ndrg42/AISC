@@ -77,6 +77,7 @@ def save_results(score,model):
         csv_writer.writerow([metric.name for metric in model.metrics])
         csv_writer.writerow(score)
 
+    model.save(experiment_name + '/model')
 
 
 
