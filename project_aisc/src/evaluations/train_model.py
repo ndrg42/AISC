@@ -50,19 +50,35 @@ def train_parser():
 
     return args
 
-def save_results():
+def save_results(score,model):
 
     import datetime
+    import csv
+
     date = datetime.datetime.now()
 
-    directory = '/home/claudio/AISC/project_aisc/data/experiments/experiment_'+date.strftime("%d")+"-"+date.strftime("%m")
+    directory = '/home/claudio/AISC/project_aisc/data/experiments/experiments_'+date.strftime("%d")+"-"+date.strftime("%m")
     #Flag to check if an experiment and relative directory containing that data is alredy present
-    today_experiment = os.path.isdir(directory)
+    today_experiments = os.path.isdir(directory)
 
-    if not today_experiment:
+    if not today_experiments:
         os.makedirs(directory)
+    #count the number of experiments done for the day
+    n_experiment_per_day = len([name for name in os.listdir(directory)])
+    #each experiment has their own folder
+    experiment_name = directory + '/experiment' + "-" + str(n_experiment_per_day)
+    current_experiment = os.path.isdir(experiment_name)
 
-    project_name = 'model_regressor'+date.strftime("%d")+"-"+date.strftime("%m")+"-"+str(n_best_model_per_day)
+    if not current_experiment:
+        os.makedirs(experiment_name)
+
+    with open(experiment_name + '/score.csv', mode='a') as csv_file:
+        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+        csv_writer.writerow([metric.name for metric in model.metrics])
+        csv_writer.writerow(score)
+
+
+
 
 
 def main():
@@ -121,7 +137,9 @@ def main():
     #Print the metric and the relative score of the model
     for name,value in zip(metrics_name,score):
         print(name+':',value)
-        
+
+    save_results(score,model)
+
 
 if __name__ == '__main__':
     main()
