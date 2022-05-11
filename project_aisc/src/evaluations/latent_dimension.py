@@ -4,9 +4,11 @@ import sys
 sys.path.append('/home/claudio/AISC/project_aisc/src/data')
 sys.path.append('/home/claudio/AISC/project_aisc/src/features')
 sys.path.append('/home/claudio/AISC/project_aisc/src/model')
+sys.path.append('src/utils')
 import make_dataset
 import build_features
 import build_models
+from utils import save_results
 import tensorflow as tf
 import yaml
 from yaml import Loader
@@ -44,6 +46,14 @@ def latent_parser():
                                    The model need to be specified"""
     )
 
+    my_parser.add_argument('-save',
+                           action = 'store',
+                           nargs = '+',
+                           help = "Save the results into a folder ",
+                           choices = ['model','score','test','all','elements','materials'],
+    )
+
+
     #Parse the args
     args = my_parser.parse_args()
 
@@ -74,11 +84,15 @@ def main():
 
     if len_argv > 1:
         args = latent_parser()
-        model_name = ' '.join(args.model)
+        if args.model is not None:
+            model_name = ' '.join(args.model)
+        else:
+            model_name = 'linear regressor'
         model_config_path = args.config
 
     else:
         model_name = 'linear regressor'
+        args = None
 
     if 'regressor' in model_name:
         tc = sc_dataframe['critical_temp']
@@ -87,7 +101,7 @@ def main():
         legend_latent_space = ['High temperature','Low temperature']
 
     elif 'classifier' in model_name:
-        tc = np.where(sc_dataframe['critical_temp']>0,1,0)
+        tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
         mask_temperature_materials = tc
         legend_latent_space = ['Superconductor','Non Superconductor']
 
@@ -105,9 +119,9 @@ def main():
     model = build_models.get_model(model_name = model_name ,model_config = model_config)
     callbacks = [tf.keras.callbacks.EarlyStopping(min_delta = 5, patience = 40, restore_best_weights = True)]
     model.fit(X, Y, validation_data = (X_val,Y_val), epochs = 1, callbacks = callbacks)
+    score = model.evaluate(X_test,Y_test,verbose=0)
 
-
-    materials_representation = model.material_representation(supercon_processed)
+    materials_representation = pd.DataFrame(model.material_representation(supercon_processed).numpy(),columns=['latent feature'])
 
     elements = [mendeleev.element(i).symbol for i in range(1,97)]
 
@@ -119,7 +133,7 @@ def main():
     atoms_representation = pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=elements,columns=['latent feature'])
     fig,axs = plt.subplots(1,2, figsize=(11,8))
 
-    sns.histplot(x = np.reshape(materials_representation.numpy(),(-1,)), hue = mask_temperature_materials, ax = axs[0])
+    sns.histplot(data = materials_representation, x ='latent feature', hue = mask_temperature_materials, ax = axs[0])
     axs[0].set_title('Material Latent Representation')
     axs[0].set_xlabel('Latent feature')
     axs[0].legend(legend_latent_space)
@@ -131,7 +145,7 @@ def main():
     axs[1].set_yticks([])
 
     for line in range(0,atoms_representation.shape[0]):
-         axs[1].text(x = atoms_representation.iloc[line] + 0.02,
+         axs[1].text(x = atoms_representation.iloc[line] + 0.1*atoms_representation.iloc[line],
                      y = line+1,
                      s = elements[line],
                      fontsize = 8,
@@ -139,8 +153,11 @@ def main():
 
 
     plt.show()
-    #print(pd.DataFrame(model.atom_representation(atoms_processed).numpy(),index=elements,columns = ['Latent representation']).to_string())
     print(atoms_representation)
+
+    if args is not None and args.save  is not None:
+        save_results(score,model,[Y_test,model.predict(X_test)],args.save,atoms_representation,materials_representation)
+
 
 if __name__ == '__main__':
     main()

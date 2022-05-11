@@ -1,5 +1,5 @@
 
-def save_results(score,model,evaluations,arg_save):
+def save_results(score,model,evaluations,arg_save,elements,materials):
     """Save results and model
 
     Save score, model and evaluations if specified through cli.
@@ -51,3 +51,7 @@ def save_results(score,model,evaluations,arg_save):
     if 'all' in arg_save or 'test' in arg_save:
         ob_and_pred = pd.DataFrame({'observed' : evaluations[0].values,'predicted': [value[0] for value in evaluations[1]]},index = evaluations[0].index)
         ob_and_pred.to_csv(experiment_name + '/evaluations.csv')
+    if 'all' in arg_save or 'elements' in arg_save:
+        elements.to_csv(experiment_name + '/elements.csv')
+    if 'all' in arg_save or 'materials' in arg_save:
+        materials.to_csv(experiment_name + '/materials.csv')
