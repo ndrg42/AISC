@@ -42,8 +42,9 @@ def train_parser():
 
     my_parser.add_argument('-save',
                            action = 'store',
-                           nargs = '?',
+                           nargs = '+',
                            help = "Save the results into a folder ",
+                           choices = ['model','score','test','all'],
     )
 
     #Parse the args
@@ -51,7 +52,24 @@ def train_parser():
 
     return args
 
-def save_results(score,model,evaluations):
+def save_results(score,model,evaluations,arg_save):
+    """Save results and model
+
+    Save score, model and evaluations if specified through cli.
+    Evaluations is a csv file containig an index, the observed critical temperature
+    and the relative predictions. The index is referred to the selected materials.
+
+    Args:
+        - score: list containing model's metrics evaluated on test set
+        - model: tf.keras.model that will be saved
+        - evaluations: list containing Y_test and the relative predictions
+        - arg_save: string or list to target what to save. It can contain:
+           - 'all' -> save score, model, evaluations
+           - 'score' -> save score
+           - 'model' -> save model with SavedModel format
+           - 'evaluations' -> save indexs, tests and predictions
+
+    """
 
     import datetime
     import csv
@@ -73,15 +91,18 @@ def save_results(score,model,evaluations):
     if not current_experiment:
         os.makedirs(experiment_name)
 
-    with open(experiment_name + '/score.csv', mode='a') as csv_file:
-        csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-        csv_writer.writerow([metric.name for metric in model.metrics])
-        csv_writer.writerow(score)
+    if 'all' in arg_save or 'score' in arg_save:
+        with open(experiment_name + '/score.csv', mode='a') as csv_file:
+            csv_writer = csv.writer(csv_file, delimiter=',', quotechar='"', quoting=csv.QUOTE_MINIMAL)
+            csv_writer.writerow([metric.name for metric in model.metrics])
+            csv_writer.writerow(score)
 
-    model.save(experiment_name + '/model')
+    if 'all' in arg_save or 'model' in arg_save:
+        model.save(experiment_name + '/model')
 
-    ob_and_pred = pd.DataFrame({'observed' : evaluations[0].values,'predicted': [value[0] for value in evaluations[1]]},index = evaluations[0].index)
-    ob_and_pred.to_csv(experiment_name + '/evaluations.csv')
+    if 'all' in arg_save or 'test' in arg_save:
+        ob_and_pred = pd.DataFrame({'observed' : evaluations[0].values,'predicted': [value[0] for value in evaluations[1]]},index = evaluations[0].index)
+        ob_and_pred.to_csv(experiment_name + '/evaluations.csv')
 
 
 
@@ -106,21 +127,28 @@ def main():
     model_config = None
     model_config_path = None
 
+    #Check if any argument is passed from cli
     if len_argv > 1:
         args = train_parser()
-        model_name = ' '.join(args.model)
+        #If ars passed don't contain model we set a default one (regressor)
+        if args.model is not None:
+            model_name = ' '.join(args.model)
+        else:
+            model_name = 'regressor'
         model_config_path = args.config
 
     else:
         model_name = 'regressor'
+        args = None
 
+    #We keep pd.Series because it keeps track of the index in the test
     if 'regressor' in model_name:
         tc = sc_dataframe['critical_temp']
 
     elif 'classifier' in model_name:
-        #tc = np.where(sc_dataframe['critical_temp']>0,1,0)
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
+    #If a custom model is passed through the config file we load it with yaml
     if model_config_path is not None:
         model_config_path = model_config_path[0]
 
@@ -143,7 +171,8 @@ def main():
     for name,value in zip(metrics_name,score):
         print(name+':',value)
 
-    save_results(score,model,[Y_test,model.predict(X_test)])
+    if args is not None and args.save  is not None:
+        save_results(score,model,[Y_test,model.predict(X_test)],args.save)
 
 
 if __name__ == '__main__':
