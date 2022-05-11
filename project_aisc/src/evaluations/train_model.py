@@ -12,6 +12,7 @@ import argparse
 import yaml
 from yaml import Loader
 import numpy as np
+import pandas as pd
 
 def train_parser():
 
@@ -50,7 +51,7 @@ def train_parser():
 
     return args
 
-def save_results(score,model):
+def save_results(score,model,evaluations):
 
     import datetime
     import csv
@@ -78,6 +79,9 @@ def save_results(score,model):
         csv_writer.writerow(score)
 
     model.save(experiment_name + '/model')
+
+    ob_and_pred = pd.DataFrame({'observed' : evaluations[0].values,'predicted': [value[0] for value in evaluations[1]]},index = evaluations[0].index)
+    ob_and_pred.to_csv(experiment_name + '/evaluations.csv')
 
 
 
@@ -130,7 +134,7 @@ def main():
     #Define model and train it
     model = build_models.get_model(model_name= model_name, model_config = model_config)
     callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5,patience = 40,restore_best_weights=True)]
-    model.fit(X,Y,validation_data=(X_val,Y_val),epochs=2,callbacks=callbacks)
+    model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
 
     #Save scores and metrics' name
     score = model.evaluate(X_test,Y_test,verbose=0)
@@ -139,7 +143,7 @@ def main():
     for name,value in zip(metrics_name,score):
         print(name+':',value)
 
-    save_results(score,model)
+    save_results(score,model,[Y_test,model.predict(X_test)])
 
 
 if __name__ == '__main__':
