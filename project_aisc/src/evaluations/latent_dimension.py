@@ -107,18 +107,20 @@ def main():
 
     if model_config_path is not None:
         model_config_path = model_config_path[0]
+    else:
+        model_config_path = '/home/claudio/AISC/project_aisc/config/latent_dimension_config.yaml'
 
-        with open(model_config_path) as file:
-            model_config = yaml.load(file,Loader)
+    with open(model_config_path) as file:
+        model_config = yaml.load(file,Loader)
 
 
-    X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, 0.2)
-    X,X_val,Y,Y_val = build_features.train_test_split(X, Y, 0.2)
+    X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, model_config['train setup']['test split'])
+    X,X_val,Y,Y_val = build_features.train_test_split(X, Y, model_config['train setup']['validation split'])
 
     #Define model and train it
     model = build_models.get_model(model_name = model_name ,model_config = model_config)
-    callbacks = [tf.keras.callbacks.EarlyStopping(min_delta = 5, patience = 40, restore_best_weights = True)]
-    model.fit(X, Y, validation_data = (X_val,Y_val), epochs = 1, callbacks = callbacks)
+    callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
+    model.fit(X, Y, validation_data = (X_val,Y_val), callbacks = callbacks, **model_config['train setup']['fit setup'])
     score = model.evaluate(X_test,Y_test,verbose=0)
 
     materials_representation = pd.DataFrame(model.material_representation(supercon_processed).numpy(),columns=['latent feature'])
