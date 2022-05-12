@@ -99,9 +99,11 @@ def main():
     #If a custom model is passed through the config file we load it with yaml
     if model_config_path is not None:
         model_config_path = model_config_path[0]
+    else:
+        model_config_path = '/home/claudio/AISC/project_aisc/config/model_config.yaml'
 
-        with open(model_config_path) as file:
-            model_config = yaml.load(file,Loader)
+    with open(model_config_path) as file:
+        model_config = yaml.load(file,Loader)
 
 
     X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, 0.2)
@@ -109,8 +111,8 @@ def main():
 
     #Define model and train it
     model = build_models.get_model(model_name= model_name, model_config = model_config)
-    callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5,patience = 40,restore_best_weights=True)]
-    model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
+    callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
+    model.fit(X,Y,validation_data=(X_val,Y_val),callbacks=callbacks,**model_config['train setup']['fit setup'])
 
     #Save scores and metrics' name
     score = model.evaluate(X_test,Y_test,verbose=0)
