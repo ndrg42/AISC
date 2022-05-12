@@ -106,8 +106,8 @@ def main():
         model_config = yaml.load(file,Loader)
 
 
-    X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, 0.2)
-    X,X_val,Y,Y_val = build_features.train_test_split(X,Y,0.2)
+    X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, model_config['train setup']['test split'])
+    X,X_val,Y,Y_val = build_features.train_test_split(X,Y,model_config['train setup']['validation split'])
 
     #Define model and train it
     model = build_models.get_model(model_name= model_name, model_config = model_config)
