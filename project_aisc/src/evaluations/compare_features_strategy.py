@@ -34,9 +34,10 @@ def main():
     file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
     models_config = yaml.load_all(file_model_config,Loader)
 
-    n_cycles = 1
+    n_cycles = 3
     deep_set_score = {}
     for model_config in models_config:
+        deep_set_score[model_config['latent dim']] = np.array([])
         for i in range(n_cycles):
             X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed,tc_regression,0.2)
             X,X_val,Y,Y_val = build_features.train_test_split(X,Y,0.2)
@@ -47,12 +48,13 @@ def main():
             model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
 
             #Save scores and metrics' name
-            deep_set_score[model_config['latent dim']] = model.evaluate(X_test,Y_test,verbose=0)
+            deep_set_score[model_config['latent dim']] = np.append(deep_set_score[model_config['latent dim']],model.evaluate(X_test,Y_test,verbose=0))
 
     file_model_config.close()
-    n_cycles = 1
+    n_cycles = 3
     analytical_supercon_dataset_processed = supercon_processor.get_analytical_dataset()
     nn_score = {}
+    nn_score['80']  = np.array([])
     for i in range(n_cycles):
         X,X_test,Y,Y_test = sk.model_selection.train_test_split(analytical_supercon_dataset_processed,tc_regression,test_size=0.2)
         X,X_val,Y,Y_val = sk.model_selection.train_test_split(X,Y,test_size = 0.2)
@@ -63,13 +65,14 @@ def main():
         model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
 
         #Save scores and metrics' name
-        nn_score['80'] = model.evaluate(X_test,Y_test,verbose=0)
+        nn_score['80'] = np.append(nn_score['80'],model.evaluate(X_test,Y_test,verbose=0))
+
     print('\nDeep Set')
     for latent_dim in deep_set_score.keys():
-        print(f'Latent dim:{latent_dim}  rmse: {deep_set_score[latent_dim][2]}')
+        print(f'Latent dim:{latent_dim} average rmse: {deep_set_score[latent_dim][2].mean()}')
     print('\nSimple Neural Network\n')
     for latent_dim in nn_score.keys():
-        print(f'Latent dim:{latent_dim}  rmse: {nn_score[latent_dim][2]}')
+        print(f'Latent dim:{latent_dim} average rmse: {nn_score[latent_dim][2].mean()}')
 
 if __name__ == '__main__':
     main()
