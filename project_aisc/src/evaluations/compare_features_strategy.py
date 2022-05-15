@@ -1,7 +1,10 @@
+import os
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
 sys.path.append('/home/claudio/AISC/project_aisc/src/data')
 sys.path.append('/home/claudio/AISC/project_aisc/src/features')
 sys.path.append('/home/claudio/AISC/project_aisc/src/model')
+sys.path.append('/home/claudio/AISC/project_aisc/src/utils')
 import make_dataset
 import build_features
 import build_models
@@ -13,6 +16,44 @@ import yaml
 from yaml import Loader
 import sklearn as sk
 import importlib
+from utils import save_results
+import argparse
+
+def comparison_parser():
+
+
+    my_parser = argparse.ArgumentParser(prog='compare features strategy',
+                                        description = "compare regression metrics with different input strategy",
+                                        usage = '%(prog)s [options]',
+                                        )
+
+    my_parser.add_argument('-config',
+                          action = 'store',
+                          nargs = 1,
+                          metavar = ('CONFIG'),
+                          help = """Use a custom config for the ML model."""
+    )
+
+    my_parser.add_argument('-save',
+                           action = 'store_true',
+                           help = "Save the results into a folder ",
+    )
+
+    my_parser.add_argument('-cycles',
+                           action = 'store',
+                           nargs = 1,
+                           type = int,
+                           help = "Save the results into a folder ",
+    )
+
+
+    #Parse the args
+    args = my_parser.parse_args()
+
+    return args
+
+
+
 
 def main():
     #Load atomic data
@@ -31,10 +72,28 @@ def main():
 
     tc_regression = sc_dataframe['critical_temp']
 
-    file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
+    len_argv = len(sys.argv)
+
+    if len_argv > 1:
+        args = comparison_parser()
+
+        if args.cycles is not None:
+            n_cycles = int(args.cycles[0])
+        else:
+            n_cycles = 3
+
+        if args.config is not None:
+            file_model_config = open(args.config[0])
+        else:
+            file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
+
+    else:
+        n_cycles = 3
+        file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
+
     models_config = yaml.load_all(file_model_config,Loader)
 
-    n_cycles = 3
+
     deep_set_score = {}
     for model_config in models_config:
         deep_set_score[model_config['latent dim']] = np.array([])
@@ -46,12 +105,14 @@ def main():
             model = build_models.get_model(model_name='regressor',model_config = model_config)
             callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5,patience = 40,restore_best_weights=True)]
             model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
+            score = model.evaluate(X_test,Y_test,verbose=0)
+            if args is not None and args.save  is not None:
+                save_results(score)
 
             #Save scores and metrics' name
             deep_set_score[model_config['latent dim']] = np.append(deep_set_score[model_config['latent dim']],model.evaluate(X_test,Y_test,verbose=0))
 
     file_model_config.close()
-    n_cycles = 3
     analytical_supercon_dataset_processed = supercon_processor.get_analytical_dataset()
     nn_score = {}
     nn_score['80']  = np.array([])
@@ -63,6 +124,11 @@ def main():
         model = build_models.get_model(model_name='nn regressor',)
         callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5,patience = 40,restore_best_weights=True)]
         model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
+        #Save scores and metrics' name
+        score = model.evaluate(X_test,Y_test,verbose=0)
+        if args is not None and args.save  is not None:
+            save_results(score)
+
 
         #Save scores and metrics' name
         nn_score['80'] = np.append(nn_score['80'],model.evaluate(X_test,Y_test,verbose=0))
