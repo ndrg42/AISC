@@ -64,7 +64,7 @@ def main():
     atom_processed = atom_processor.get_atom_data()
 
     #Load SuperCon dataset
-    sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
+    sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')[:1000]
     #Initialize processor for SuperCon data
     supercon_processor = build_features.SuperConData(atom_processed,sc_dataframe,padding = 10)
     #Process SuperCon data
@@ -107,7 +107,7 @@ def main():
             model.fit(X,Y,validation_data=(X_val,Y_val),epochs=1,callbacks=callbacks)
             score = model.evaluate(X_test,Y_test,verbose=0)
             if args is not None and args.save  is not None:
-                save_results(score)
+                save_results(score,model,arg_save=['score'])
 
             #Save scores and metrics' name
             deep_set_score[model_config['latent dim']] = np.append(deep_set_score[model_config['latent dim']],model.evaluate(X_test,Y_test,verbose=0))
@@ -127,7 +127,7 @@ def main():
         #Save scores and metrics' name
         score = model.evaluate(X_test,Y_test,verbose=0)
         if args is not None and args.save  is not None:
-            save_results(score)
+            save_results(score,model,arg_save=['score'])
 
 
         #Save scores and metrics' name
