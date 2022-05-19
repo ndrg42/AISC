@@ -29,7 +29,6 @@ sys.path.append('../data')
 sys.path.append('../features')
 import make_dataset
 import build_features
-from build_features import DataProcessor
 import datetime
 import kerastuner as kt
 from kerastuner.tuners import Hyperband
@@ -53,6 +52,7 @@ def build_phi(input,layers,output):
     output = Dense(**output)(x)
 
     return Model(inputs =input_atom,outputs = output)
+
 
 def build_rho(input,layers,output):
     """Return rho model of rho(sum_i phi(atom_i))"""
@@ -86,7 +86,6 @@ class DeepSetModel(tf.keras.Model):
         return rho_output
 
 
-
 class LinearDeepSetModel(tf.keras.Model):
     """Linear Deep Set model"""
 
@@ -115,10 +114,6 @@ class LinearDeepSetModel(tf.keras.Model):
         atom_output = [self.phi(input[:,:-1]) for input in atoms_input][0]
 
         return atom_output
-
-
-
-
 
 
 def build_vanilla_nn(input,layers,output):
@@ -199,6 +194,7 @@ def get_deepset_classifier(phi_setup = model_config['phi setup'],
 with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
     #Load a dictionary contaning the model's name and the function to initialize them
     avaible_model = yaml.load(file,Loader)
+
 
 def get_model(model_name='classifier',model_config = None):
     """Retrive and return the specified model using avaible_model (dict) as a switch controll."""
