@@ -16,6 +16,7 @@ from yaml import Loader
 import numpy as np
 import pandas as pd
 
+
 def train_parser():
 
     with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
@@ -64,13 +65,6 @@ def main():
     #Process atomic data
     atom_processed = atom_processor.get_atom_data()
 
-    #Load SuperCon dataset
-    sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
-    #Initialize processor for SuperCon data
-    supercon_processor = build_features.SuperConData(atom_processed,sc_dataframe,padding = 10)
-    #Process SuperCon data
-    supercon_processed = supercon_processor.get_dataset()
-
     len_argv = len(sys.argv)
     model_config = None
     model_config_path = None
@@ -89,11 +83,16 @@ def main():
         model_name = 'regressor'
         args = None
 
+
     #We keep pd.Series because it keeps track of the index in the test
     if 'regressor' in model_name:
+        #Load SuperCon dataset
+        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
         tc = sc_dataframe['critical_temp']
 
     elif 'classifier' in model_name:
+        #Load SuperCon dataset
+        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
     #If a custom model is passed through the config file we load it with yaml
@@ -105,6 +104,11 @@ def main():
     with open(model_config_path) as file:
         model_config = yaml.load(file,Loader)
 
+
+    #Initialize processor for SuperCon data
+    supercon_processor = build_features.SuperConData(atom_processed,sc_dataframe,padding = 10)
+    #Process SuperCon data
+    supercon_processed = supercon_processor.get_dataset()
 
     X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, model_config['train setup']['test split'])
     X,X_val,Y,Y_val = build_features.train_test_split(X,Y,model_config['train setup']['validation split'])

@@ -72,12 +72,6 @@ def main():
     #Process atomic data
     atom_processed = atom_processor.get_atom_data()
 
-    #Load SuperCon dataset
-    sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
-    #Initialize processor for SuperCon data
-    supercon_processor = build_features.SuperConData(atom_processed,sc_dataframe,padding = 10)
-    #Process SuperCon data
-    supercon_processed = supercon_processor.get_dataset()
 
     len_argv = len(sys.argv)
     model_config_path = None
@@ -95,12 +89,16 @@ def main():
         args = None
 
     if 'regressor' in model_name:
+        #Load SuperCon dataset
+        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
         tc = sc_dataframe['critical_temp']
         #Select material with high temperature (tc > 10 K)
         mask_temperature_materials = np.where(tc > 10,1,0)
         legend_latent_space = ['High temperature','Low temperature']
 
     elif 'classifier' in model_name:
+        #Load SuperCon dataset
+        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
         mask_temperature_materials = tc
         legend_latent_space = ['Superconductor','Non Superconductor']
@@ -113,6 +111,11 @@ def main():
     with open(model_config_path) as file:
         model_config = yaml.load(file,Loader)
 
+
+    #Initialize processor for SuperCon data
+    supercon_processor = build_features.SuperConData(atom_processed,sc_dataframe,padding = 10)
+    #Process SuperCon data
+    supercon_processed = supercon_processor.get_dataset()
 
     X,X_test,Y,Y_test = build_features.train_test_split(supercon_processed, tc, model_config['train setup']['test split'])
     X,X_val,Y,Y_val = build_features.train_test_split(X, Y, model_config['train setup']['validation split'])
