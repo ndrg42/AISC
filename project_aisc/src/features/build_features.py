@@ -12,14 +12,12 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.model_selection import train_test_split as np_train_test_split
 import sys
 sys.path.append('../data')
-#import make_dataset
+sys.path.append('src/utils')
+import utils
+
 
 #Add input method in SuperConData
-#Add analitic dataset in SuperConData
 #add remove douplicated row in SuperConData
-#Add test for method in AtomData
-#Add test for method in SuperConData
-#Check analytical dataset
 #Put in another file the function
 
 class AtomData():
@@ -64,9 +62,8 @@ class AtomData():
 
 
     def natural_encode(self,atomic_feature,atomic_map):
-        """Map feature's value into natural number following atomic_map (dict) for atomic_feature in periodic_table"""
-        # atomci_feature = 'block'
-        # atomic_map = { 's': 0,'p' : 1,'d' : 2,'f' : 3}
+        """Map feature's value into natural number in according to atomic_map (dict)"""
+
         natural_feature_encoded = self.periodic_table[atomic_feature].map(atomic_map)
 
         return natural_feature_encoded
@@ -289,58 +286,58 @@ class SuperConData():
         atoms_symbol = [symbol for symbol,_ in atom_symbol_quantity]
         selected_atom = self.atom_data.loc[atoms_symbol,selected_features]
 
-        analitic_mono_functions = [np.mean,self.geo_mean,self.entropy,self.range_feature,np.std,]
+        analitic_mono_functions = [np.mean, utils.geo_mean, utils.entropy, utils.range_feature, np.std,]
         for foo in analitic_mono_functions:
             expanded_row.append(selected_atom.apply(foo).values)
 
-        analitic_bi_functions = [self.weighted_average,self.weighted_geo_mean,self.weighted_entropy,self.weighted_range_feature,self.weighted_std]
+        analitic_bi_functions = [utils.weighted_average, utils.weighted_geo_mean, utils.weighted_entropy, utils.weighted_range_feature, utils.weighted_std]
         for foo in analitic_bi_functions:
             expanded_row.append(selected_atom.apply(lambda x: foo(x,atoms_quantity),axis=0).values)
 
         expanded_row = np.reshape(np.array(expanded_row),(-1,))
         return expanded_row
 
-    def weighted_average(self,med,perc):
-        return np.average(med,weights=perc)
-
-    def geo_mean(self,iterable):
-        a = np.abs(iterable)
-        return a.prod()**(1.0/len(a))
-
-    def weighted_geo_mean(self,med,perc):
-        a = np.abs(med)**(perc/np.sum(perc))
-        return a.prod()**(1.0/len(a))
-
-
-
-    def entropy(self,med):
-        med = np.abs(med)
-        med = np.where(med>0.00000000001,med,0.00000000001)
-        return -np.sum(med*np.log(med))
-
-
-    def weighted_entropy(self,med,perc):
-        med = np.abs(med)
-        med = np.where(med>0.00000000001,med,0.00000000001)
-        med = med*perc/np.sum(med*perc)
-
-        return -np.sum(med*np.log(med))
-
-
-    def range_feature(self,med):
-        max = med.max()
-        min = med.min()
-        return max-min
-
-    def weighted_range_feature(self,med,perc):
-        med = med*perc/np.sum(perc)
-
-        return self.range_feature(med)
-
-    def weighted_std(self,med,perc):
-        x = abs(med - np.average(med,weights = perc))**2
-        std = np.sqrt(np.average(x,weights = perc))
-        return std
+    # def weighted_average(self,med,perc):
+    #     return np.average(med,weights=perc)
+    #
+    # def geo_mean(self,iterable):
+    #     a = np.abs(iterable)
+    #     return a.prod()**(1.0/len(a))
+    #
+    # def weighted_geo_mean(self,med,perc):
+    #     a = np.abs(med)**(perc/np.sum(perc))
+    #     return a.prod()**(1.0/len(a))
+    #
+    #
+    #
+    # def entropy(self,med):
+    #     med = np.abs(med)
+    #     med = np.where(med>0.00000000001,med,0.00000000001)
+    #     return -np.sum(med*np.log(med))
+    #
+    #
+    # def weighted_entropy(self,med,perc):
+    #     med = np.abs(med)
+    #     med = np.where(med>0.00000000001,med,0.00000000001)
+    #     med = med*perc/np.sum(med*perc)
+    #
+    #     return -np.sum(med*np.log(med))
+    #
+    #
+    # def range_feature(self,med):
+    #     max = med.max()
+    #     min = med.min()
+    #     return max-min
+    #
+    # def weighted_range_feature(self,med,perc):
+    #     med = med*perc/np.sum(perc)
+    #
+    #     return self.range_feature(med)
+    #
+    # def weighted_std(self,med,perc):
+    #     x = abs(med - np.average(med,weights = perc))**2
+    #     std = np.sqrt(np.average(x,weights = perc))
+    #     return std
 
 
 def train_test_split(data,label,test_size=0.2):
@@ -353,7 +350,7 @@ def train_test_split(data,label,test_size=0.2):
            X,X_test,y,y_test: A tuple containing in order data, test's data, label, test's label
        """
 
-    X,X_test,y,y_test = np_train_test_split(np.moveaxis(np.array(data),0,1),np.array(label),test_size = test_size)
+    X,X_test,y,y_test = np_train_test_split(np.moveaxis(np.array(data),0,1),label,test_size = test_size)
     X  = list(np.moveaxis(X,0,1))
     X_test  = list(np.moveaxis(X_test,0,1))
 

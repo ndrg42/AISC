@@ -1,3 +1,4 @@
+import numpy as np
 
 def save_results(score = None, model = None, evaluations=None, arg_save=[], elements=None, materials=None):
     """Save results and model
@@ -61,3 +62,42 @@ def save_results(score = None, model = None, evaluations=None, arg_save=[], elem
             materials.to_csv(experiment_name + '/materials.csv')
         except:
             pass
+
+
+
+def weighted_average(iterable,weights):
+    return np.average(iterable,weights=weights)
+
+def geo_mean(iterable):
+    iterable = np.abs(iterable)
+    return iterable.prod()**(1.0/len(iterable))
+
+def weighted_geo_mean(iterable,weights):
+    iterable = np.abs(iterable)**(weights/np.sum(weights))
+    return iterable.prod()**(1.0/len(iterable))
+
+def entropy(iterable):
+    iterable = np.abs(iterable)
+    iterable = np.where(iterable >0.00000000001, iterable, 0.00000000001)
+    return -np.sum(iterable*np.log(iterable))
+
+def weighted_entropy(iterable,weights):
+    iterable = np.abs(iterable)
+    iterable = np.where(iterable > 0.00000000001, iterable, 0.00000000001)
+    iterable = iterable*weights/np.sum(iterable*weights)
+
+    return -np.sum(iterable*np.log(iterable))
+
+def range_feature(iterable):
+    max = iterable.max()
+    min = iterable.min()
+    return max-min
+
+def weighted_range_feature(iterable,weights):
+    iterable = iterable*weights/np.sum(weights)
+    return range_feature(iterable)
+
+def weighted_std(iterable, weights):
+    iterable = abs(iterable - np.average(iterable,weights = weights))**2
+    std = np.sqrt(np.average(iterable, weights = weights))
+    return std
