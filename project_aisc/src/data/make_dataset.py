@@ -6,25 +6,11 @@ import sys
 sys.path.append('src/features')
 import make_dataset
 from build_features import remove_columns_with_missing_elements
+from chela.formula_handler import build_dataframe
 
 
-#make_dataset.py rename into make_dataset.py
-#deve contenere solo routine per generare/scaricare/caricare nel giusto formato
-#i dati raw
-
-#SuperCon -> Da cambiare nome
-#PeriodicTable ->Da cambiare nome
-#CreateSuperCon -> Da cambiare nome
-#from_string_to_dict -> da cancellare, non serve più. è spostato nel pacchetto chela
-
-#Change name according python standard
 def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
-    """
-    carica un dataset con gli atomi che compongono i materiali superconduttori e la loro temperatura critica
-
-    output:
-          dataset
-    """
+    """ Load pandas DataFrame of superconductors and relative critical temperatures"""
 
     sc_dataframe = pd.read_csv(sc_path)
     return sc_dataframe
@@ -32,18 +18,20 @@ def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
 
 def PeriodicTable(max_atomic_number=96,max_missing_value=30):
     """
-    carica i dataset dei composti superconduttori e la tavola periodica
-    features atomiche disponibili:'atomic_number', 'atomic_volume', 'block', 'density',
+    Return merged periodic table with the following features:
+       'atomic_number', 'atomic_volume', 'block', 'density',
        'dipole_polarizability', 'electron_affinity', 'evaporation_heat',
        'fusion_heat', 'group_id', 'lattice_constant', 'lattice_structure',
        'melting_point', 'period', 'specific_heat', 'thermal_conductivity',
        'vdw_radius', 'covalent_radius_pyykko', 'en_pauling', 'atomic_weight',
        'atomic_radius_rahm', 'valence', 'ionenergies'
-    input:
-          numero massimo di atomi da caricare (opzionale)
-          numero massimo di dati mancanti per feature (opzionale)
-    output:
-          dataset
+
+    Args:
+          max_atomic_number: (default = 96) Holds atoms with atomic number minor of a fixed value
+          max_missing_value: (default = 30) Drop features with more than a fixed value
+
+    Returns:
+        periodic_table: pd.DataFrame containing periodic table data
     """
 
     periodic_table = get_mendeleev_periodic_table_data(max_atomic_number=max_atomic_number)
@@ -55,7 +43,6 @@ def PeriodicTable(max_atomic_number=96,max_missing_value=30):
                                                           max_missing_value=max_missing_value,
                                                           )
 
-    #../../
     path = "data/raw/"
     features = ['thermal_conductivity','specific_heat','electron_affinity','density']
     features_and_scale = {'thermal_conductivity':1,'specific_heat':1/1000,'electron_affinity': 1/100,'density':1/1000}
@@ -127,132 +114,6 @@ def merge_periodic_table_data(features_and_scale,atomic_dataset_dict,periodic_ta
     return periodic_table
 
 
-# def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
-#     """Create a dataset of superconductor and non-superconducting materials
-#
-#     Args:
-#         material (bool): a flag used to indicate if keep or not the material column
-#         name (str): the name of the saved file (default is supercon_tot.csv)
-#     """
-#     #read data in a column separed format
-#     #supercon = pd.read_csv('data/raw/SuperCon_database.dat',delimiter = r"\s+",names = ['formula','tc'])
-#     supercon = pd.read_csv(path)
-#     supercon = supercon.rename(columns = {'critical_temp':'tc','material':'formula'})
-#     supercon.drop(0,inplace=True)
-#     supercon['tc'] = supercon['tc'].astype(float)
-#     #supercon.rename(columns = {'material':'formula','critical_temp':'tc'},inplace=True)
-#     #remove rows with nan value on tc
-#     supercon = supercon.dropna()
-#     #get duplicated row aggregating them with mean value on critical temperature
-#     duplicated_row = supercon[supercon.duplicated(subset = ['formula'],keep = False)].groupby('formula').aggregate({'tc':'mean'}).reset_index()
-#     #drop all the duplicated row
-#     supercon.drop_duplicates(subset = ['formula'],inplace = True,keep = False)
-#     #compose the entire dataset
-#     supercon= supercon.append(duplicated_row,ignore_index=True)
-#     #initialize a dictionary with element symbol,critical_temp,material as keys
-#     sc_dict={}
-#     num_element = 96
-#     for i in range(1,num_element+1):
-#         sc_dict[element(i).symbol] = []
-#
-#     sc_dict['material'] = []
-#     sc_dict['critical_temp'] = []
-#     #list with all the element symbol
-#     list_element = list(sc_dict.keys())[:num_element]
-#     #search element that are put more than one time in a formula
-#     repeted_values = []
-#     list_heavy_element = list_element[86:96]
-#     heavy_element = []
-#     wrong_element = []
-#     wrong_coef = []
-#     zero_element = []
-#     for i in range(supercon['formula'].shape[0]):
-#
-#         sc_string = supercon['formula'][i]
-#         tupl_atom = []
-#         from_string_to_dict(sc_string,tupl_atom)
-#         list_atom = []
-#         for j in range(len(tupl_atom)):
-#             list_atom.append(tupl_atom[j][0])
-#
-#             if float(tupl_atom[j][1]) > 150:
-#                 wrong_coef.append(i)
-#
-#
-#             if float(tupl_atom[j][1]) == 0:
-#                 zero_element.append(i)
-#
-#             if tupl_atom[j][0] not in list_element:
-#                 wrong_element.append(i)
-#
-#             if tupl_atom[j][0] in list_heavy_element:
-#                 heavy_element.append(i)
-#                 break
-#
-#         if len(list(set(list_atom))) != len(list_atom):
-#
-#             repeted_values.append(i)
-#     #drop repeted element and reset index
-#     row_to_drop = []
-#     if  drop_heavy_element:
-#         row_to_drop = repeted_values + heavy_element + wrong_element + wrong_coef + zero_element
-#         num_element = 86
-#     else:
-#         row_to_drop = repeted_values + wrong_element + wrong_coef+ zero_element
-#         num_element = 96
-#
-#     row_to_drop = list(set(row_to_drop))
-#     supercon.drop(row_to_drop,inplace = True)
-#     # supercon.drop(repeted_values,inplace=True)
-#     # supercon.drop(heavy_element,inplace=True)
-#     # print(len(wrong_element))
-#     # supercon.drop(wrong_element,inplace = True)
-#     supercon.reset_index(drop= True, inplace=True)
-#
-#     sc_dict={}
-#     #num_element = 86
-#     for i in range(1,num_element+1):
-#         sc_dict[element(i).symbol] = []
-#
-#     sc_dict['critical_temp'] = []
-#     sc_dict['material'] = []
-#
-#
-#     #list with the elements symbol
-#     element_list = list(sc_dict.keys())
-#     element_list = element_list[:-2]
-#     element_list = set(element_list)
-#     if normalized:
-#         tupl_atom = normalize_formula(tupl_atom)
-#     #create a dictionary with the quantity of each element on the molecules and relative chemical formula and critical temperature
-#     for i in range(supercon['formula'].shape[0]):
-#
-#         sc_string = supercon['formula'][i]
-#         sc_dict['material'].append(sc_string)
-#         sc_dict['critical_temp'].append(float(supercon['tc'][i]))
-#         tupl_atom = []
-#         from_string_to_dict(sc_string,tupl_atom)
-#         if normalized:
-#             tupl_atom = normalize_formula(tupl_atom)
-#         list_atom = []
-#         for j in range(len(tupl_atom)):
-#             list_atom.append(tupl_atom[j][0])
-#
-#             if tupl_atom[j][0] in list_element:
-#                 sc_dict[tupl_atom[j][0]].append(float(tupl_atom[j][1]))
-#
-#         element_not_present = element_list - (set(list_atom))
-#
-#         for el in element_not_present:
-#             sc_dict[el].append(0.0)
-#
-#     sc_dataframe = pd.DataFrame(sc_dict)
-#     if not material:
-#         sc_dataframe.drop(axis=1,inplace=True,columns=['material'])
-#     return sc_dataframe
-#     #sc_dataframe.to_csv('../../data/raw/'+name,index = False)
-from chela.formula_handler import build_dataframe
-
 def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element = False,normalized=False):
     """Create a dataset of superconductor and non-superconducting materials
 
@@ -276,74 +137,3 @@ def CreateSuperCon(path,material=True,name='supercon_tot.csv',drop_heavy_element
     supercon = supercon[chemical_symbols]
 
     return supercon
-
-
-
-
-#
-# def from_string_to_dict(string,lista):
-#     """add to a list tuples containing elements and the relative quantity presence
-#
-#     Args:
-#         string (str): string of the material
-#         lista (list): list where the couples element, quantity are added
-#     """
-#     nums = ['0','1','2','3','4','5','6','7','8','9','.']
-#     i = 0
-#     element_name = ''
-#     element_quantity = ''
-#     on = True
-#
-#     while(i<len(string) and on ):
-#         if string[i] not in nums:
-#
-#             element_name = element_name + string[i]
-#
-#             if i == len(string)-1:
-#                 lista.append((element_name,'1'))
-#                 return
-#             if i+1 < len(string):
-#                 if string[i+1].isupper() :
-#                     lista.append((element_name,'1'))
-#                     string = string[i+1:]
-#                     from_string_to_dict(string,lista)
-#                     return
-#
-#
-#         if string[i] in nums:
-#             element_quantity = ''
-#             for j in range(len(string)-i):
-#
-#                 if string[i+j] in nums:
-#
-#                     element_quantity = element_quantity + string[i+j]
-#
-#                 else:
-#                     on = False
-#                     if i+j == (len(string)-1):
-#                         lista.append((string[i+j],'1'))
-#
-#
-#                     break
-#                 if len(element_quantity)+len(element_name) == len(string):
-#                     lista.append((element_name,element_quantity))
-#                     return
-#
-#         i +=1
-#     lista.append((element_name,element_quantity))
-#
-#     if i+j < len(string) and string[i+j-1] != nums :
-#         string = string[i+j-1:]
-#         from_string_to_dict(string,lista)
-#
-#
-# def normalize_formula(lista):
-#     """ Normalize quantity of chemical formula to 100 unit size cell """
-#
-#     dict_chemical = {symbol: float(quantity) for symbol, quantity in lista}
-#     n_atoms = sum(list(dict_chemical.values()))
-#     factor = 100.0/n_atoms
-#
-#     lista_normalized = [(symbol,str(round(factor*float(quantity),1))) for symbol, quantity in lista]
-#
-#     return lista_normalized
