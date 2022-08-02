@@ -36,7 +36,7 @@ import yaml
 from yaml import Loader
 
 
-with open('/home/claudio/AISC/project_aisc/config/model_config.yaml') as file:
+with open('config/model_config.yaml') as file:
     model_config = yaml.load(file,Loader)
 
 
@@ -191,7 +191,7 @@ def get_deepset_classifier(phi_setup = model_config['phi setup'],
     return classifier_deepset
 
 
-with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
+with open('config/avaible_model_config.yaml') as file:
     #Load a dictionary contaning the model's name and the function to initialize them
     avaible_model = yaml.load(file,Loader)
 
