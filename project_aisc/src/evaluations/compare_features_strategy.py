@@ -1,10 +1,10 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
-sys.path.append('/home/claudio/AISC/project_aisc/src/data')
-sys.path.append('/home/claudio/AISC/project_aisc/src/features')
-sys.path.append('/home/claudio/AISC/project_aisc/src/model')
-sys.path.append('/home/claudio/AISC/project_aisc/src/utils')
+sys.path.append('src/data')
+sys.path.append('src/features')
+sys.path.append('src/model')
+sys.path.append('src/utils')
 import make_dataset
 import build_features
 import build_models
@@ -85,11 +85,12 @@ def main():
         if args.config is not None:
             file_model_config = open(args.config[0])
         else:
-            file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
+            file_model_config = open('config/latent_dim_change_model_config.yaml')
 
     else:
         n_cycles = 3
-        file_model_config = open('/home/claudio/AISC/project_aisc/config/latent_dim_change_model_config.yaml')
+        args = None
+        file_model_config = open('config/latent_dim_change_model_config.yaml')
 
     models_config = yaml.load_all(file_model_config,Loader)
 

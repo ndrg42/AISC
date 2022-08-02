@@ -1,9 +1,9 @@
 import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
-sys.path.append('/home/claudio/AISC/project_aisc/src/data')
-sys.path.append('/home/claudio/AISC/project_aisc/src/features')
-sys.path.append('/home/claudio/AISC/project_aisc/src/model')
+sys.path.append('src/data')
+sys.path.append('src/features')
+sys.path.append('src/model')
 sys.path.append('src/utils')
 import make_dataset
 import build_features
@@ -21,7 +21,7 @@ import mendeleev
 
 def latent_parser():
 
-    with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
+    with open('config/avaible_model_config.yaml') as file:
         model_config = yaml.load(file,Loader)
 
 
@@ -62,7 +62,7 @@ def latent_parser():
 
 def main():
 
-    with open('/home/claudio/AISC/project_aisc/config/latent_dimension_config.yaml') as file:
+    with open('config/latent_dimension_config.yaml') as file:
         model_config = yaml.load(file,Loader)
 
     #Load atomic data
@@ -106,7 +106,7 @@ def main():
     if model_config_path is not None:
         model_config_path = model_config_path[0]
     else:
-        model_config_path = '/home/claudio/AISC/project_aisc/config/latent_dimension_config.yaml'
+        model_config_path = 'config/latent_dimension_config.yaml'
 
     with open(model_config_path) as file:
         model_config = yaml.load(file,Loader)

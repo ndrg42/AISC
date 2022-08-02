@@ -19,7 +19,7 @@ import pandas as pd
 
 def train_parser():
 
-    with open('/home/claudio/AISC/project_aisc/config/avaible_model_config.yaml') as file:
+    with open('config/avaible_model_config.yaml') as file:
         model_config = yaml.load(file,Loader)
 
 
@@ -99,7 +99,7 @@ def main():
     if model_config_path is not None:
         model_config_path = model_config_path[0]
     else:
-        model_config_path = '/home/claudio/AISC/project_aisc/config/model_config.yaml'
+        model_config_path = 'config/model_config.yaml'
 
     with open(model_config_path) as file:
         model_config = yaml.load(file,Loader)
