@@ -9,7 +9,7 @@ from build_features import remove_columns_with_missing_elements
 from chela.formula_handler import build_dataframe
 
 
-def SuperCon(sc_path = '../data/raw/supercon_tot.csv'):
+def SuperCon(sc_path = '../data/raw/supercon.csv'):
     """ Load pandas DataFrame of superconductors and relative critical temperatures"""
 
     sc_dataframe = pd.read_csv(sc_path)
