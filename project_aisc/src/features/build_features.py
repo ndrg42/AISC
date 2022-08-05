@@ -1,3 +1,10 @@
+"""
+Module used to process data. AtomData process chemical species data while  SuperConData process superconductivity data.
+train_test_split is a custom function that split data for test/train, it works on list representing superconductivity
+materials containing element's data (a material is thought as an ensemble of elements; in our implementation we use list
+to manage multi-input model)
+"""
+
 import pandas as pd
 import numpy as np
 from sklearn.impute import SimpleImputer
