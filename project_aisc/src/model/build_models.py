@@ -191,7 +191,7 @@ def get_deepset_classifier(phi_setup = model_config['phi setup'],
     return classifier_deepset
 
 
-with open('config/avaible_model_config.yaml') as file:
+with open('config/available_model_config.yaml') as file:
     #Load a dictionary contaning the model's name and the function to initialize them
     avaible_model = yaml.load(file,Loader)
 

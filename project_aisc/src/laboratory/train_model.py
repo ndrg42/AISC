@@ -13,13 +13,11 @@ import tensorflow as tf
 import argparse
 import yaml
 from yaml import Loader
-import numpy as np
-import pandas as pd
 
 
 def train_parser():
 
-    with open('config/avaible_model_config.yaml') as file:
+    with open('config/available_model_config.yaml') as file:
         model_config = yaml.load(file,Loader)
 
 
@@ -87,7 +85,7 @@ def main():
     #We keep pd.Series because it keeps track of the index in the test
     if 'regressor' in model_name:
         #Load SuperCon dataset
-        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon_tot.csv')
+        sc_dataframe = make_dataset.SuperCon(sc_path ='data/raw/supercon.csv')
         tc = sc_dataframe['critical_temp']
 
     elif 'classifier' in model_name:

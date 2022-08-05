@@ -21,7 +21,7 @@ import mendeleev
 
 def latent_parser():
 
-    with open('config/avaible_model_config.yaml') as file:
+    with open('config/available_model_config.yaml') as file:
         model_config = yaml.load(file,Loader)
 
 
