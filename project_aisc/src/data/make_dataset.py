@@ -1,3 +1,11 @@
+"""
+Module containing functions to load the necessary data. The data is divided into data on superconductors and data on
+chemical species. For superconductivity data there are function to load data in the appropriate format, ie a pandas
+DataFrame with columns counting chemical species belonging to the chemical formula, chemical formula and the critical
+temperature. For non-superconductors the critical temperature is set to 0. The function to build the dataset of
+superconductors and non-superconductors must have two columns; one column containing che chemical formula and the other
+the critical temperature. For non-superconductors the critical temperature is set to 0
+"""
 import pandas as pd
 import numpy as np
 from mendeleev import element
@@ -119,7 +127,9 @@ def _merge_periodictable_data(features_and_scale, atomic_dataset_dict, periodic_
 
 
 def build_supercon(path, material=True, name='supercon_.csv'):
-    """Create a dataset of superconductor and non-superconducting materials
+    """Create a dataset of superconductors and non-superconductors from a csv file with chemical formulas,
+    under column name 'formula', and critical temperature (as a float). Non-superconductors' critical temperature
+     must be set to 0.
 
     Args:
         path (str): path to read raw material formulas
