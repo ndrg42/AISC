@@ -10,14 +10,14 @@ from build_features import remove_columns_with_missing_elements
 from chela.formula_handler import build_dataframe
 
 
-def SuperCon(sc_path='../data/raw/supercon.csv'):
+def get_supercon(sc_path='../data/raw/supercon.csv'):
     """ Load pandas DataFrame of superconductors and relative critical temperatures"""
 
     sc_dataframe = pd.read_csv(sc_path)
     return sc_dataframe
 
 
-def PeriodicTable(max_atomic_number=96, max_missing_value=30):
+def get_periodictable(max_atomic_number=96, max_missing_value=30):
     """
     Return merged periodic table with the following features:
        'atomic_number', 'atomic_volume', 'block', 'density',
@@ -35,7 +35,7 @@ def PeriodicTable(max_atomic_number=96, max_missing_value=30):
         periodic_table: pd.DataFrame containing periodic table data
     """
 
-    periodic_table = get_mendeleev_periodic_table_data(max_atomic_number=max_atomic_number)
+    periodic_table = get_mendeleev_periodictable(max_atomic_number=max_atomic_number)
 
     exceptions = ['thermal_conductivity', 'fusion_heat', 'electron_affinity', 'specific_heat']
     periodic_table = remove_columns_with_missing_elements(dataset=periodic_table,
@@ -48,16 +48,15 @@ def PeriodicTable(max_atomic_number=96, max_missing_value=30):
     features_and_scale = {'thermal_conductivity': 1, 'specific_heat': 1 / 1000, 'electron_affinity': 1 / 100,
                           'density': 1 / 1000}
 
-    atomic_dataset_dict = get_external_periodic_table_data(path=path, features=features)
+    atomic_dataset_dict = _get_external_periodictable_data(path=path, features=features)
 
-    periodic_table = merge_periodic_table_data(features_and_scale=features_and_scale,
-                                               atomic_dataset_dict=atomic_dataset_dict,
-                                               periodic_table=periodic_table)
+    periodic_table = _merge_periodictable_data(features_and_scale=features_and_scale,
+                                               atomic_dataset_dict=atomic_dataset_dict, periodic_table=periodic_table)
 
     return periodic_table
 
 
-def get_mendeleev_periodic_table_data(max_atomic_number=96):
+def get_mendeleev_periodictable(max_atomic_number=96):
     """get periodic table from mendeleev software up to atomic number = max_atomic_number"""
 
     periodic_table = get_table('elements')
@@ -90,7 +89,7 @@ def get_mendeleev_periodic_table_data(max_atomic_number=96):
     return periodic_table
 
 
-def get_external_periodic_table_data(path, features):
+def _get_external_periodictable_data(path, features):
     """Load a list of pandas DataFrame containing single atomic features"""
 
     # These Dataset are meant to be merged with periodic table data from mendeleev software
@@ -109,7 +108,7 @@ def get_external_periodic_table_data(path, features):
     return atomic_dataset_dict
 
 
-def merge_periodic_table_data(features_and_scale, atomic_dataset_dict, periodic_table):
+def _merge_periodictable_data(features_and_scale, atomic_dataset_dict, periodic_table):
     """Merge periodic table from get_external_periodic_table_data (and scale them) and mendeleev data"""
 
     for feature in features_and_scale.keys():
@@ -119,15 +118,13 @@ def merge_periodic_table_data(features_and_scale, atomic_dataset_dict, periodic_
     return periodic_table
 
 
-def CreateSuperCon(path, material=True, name='supercon_tot.csv', drop_heavy_element=False, normalized=False):
+def build_supercon(path, material=True, name='supercon_.csv'):
     """Create a dataset of superconductor and non-superconducting materials
 
     Args:
-        path (str):
+        path (str): path to read raw material formulas
         material (bool): a flag used to indicate if keep or not the material column
         name (str): the name of the saved file (default is supercon_tot.csv)
-        drop_heavy_element (bool):
-        normalized (bool):
     """
     data = pd.read_csv(path)
     supercon = build_dataframe(data)

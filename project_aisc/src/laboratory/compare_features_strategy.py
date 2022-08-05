@@ -52,14 +52,14 @@ def comparison_parser():
 
 def main():
     # Load atomic data
-    ptable = make_dataset.PeriodicTable()
+    ptable = make_dataset.get_periodictable()
     # Initialize the processor for atomic data
     atom_processor = build_features.AtomData(ptable)
     # Process atomic data
     atom_processed = atom_processor.get_atom_data()
 
     # Load SuperCon dataset
-    sc_dataframe = make_dataset.SuperCon(sc_path='data/raw/supercon_tot.csv')[:1000]
+    sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_tot.csv')[:1000]
     # Initialize processor for SuperCon data
     supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
     # Process SuperCon data
