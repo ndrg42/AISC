@@ -1,10 +1,11 @@
 import numpy as np
 
-def save_results(score = None, model = None, evaluations=None, arg_save=[], elements=None, materials=None):
+
+def save_results(score=None, model=None, evaluations=None, arg_save=[], elements=None, materials=None):
     """Save results and model
 
     Save score, model and evaluations if specified through cli.
-    Evaluations is a csv file containig an index, the observed critical temperature
+    Evaluations is a csv file containing an index, the observed critical temperature
     and the relative predictions. The index is referred to the selected materials.
 
     Args:
@@ -15,7 +16,7 @@ def save_results(score = None, model = None, evaluations=None, arg_save=[], elem
            - 'all' -> save score, model, evaluations
            - 'score' -> save score
            - 'model' -> save model with SavedModel format
-           - 'evaluations' -> save indexs, tests and predictions
+           - 'evaluations' -> save indexes, tests and predictions
 
     """
     import os
@@ -25,15 +26,16 @@ def save_results(score = None, model = None, evaluations=None, arg_save=[], elem
 
     date = datetime.datetime.now()
 
-    directory = '/home/claudio/AISC/project_aisc/data/experiments/experiments_'+date.strftime("%d")+"-"+date.strftime("%m")
-    #Flag to check if an experiment and relative directory containing that data is alredy present
+    directory = '/home/claudio/AISC/project_aisc/data/experiments/experiments_' + date.strftime(
+        "%d") + "-" + date.strftime("%m")
+    # Flag to check if an experiment and relative directory containing that data is alredy present
     today_experiments = os.path.isdir(directory)
 
     if not today_experiments:
         os.makedirs(directory)
-    #count the number of experiments done for the day
+    # count the number of experiments done for the day
     n_experiment_per_day = len([name for name in os.listdir(directory)])
-    #each experiment has their own folder
+    # each experiment has their own folder
     experiment_name = directory + '/experiment' + "-" + str(n_experiment_per_day)
     current_experiment = os.path.isdir(experiment_name)
 
@@ -50,7 +52,9 @@ def save_results(score = None, model = None, evaluations=None, arg_save=[], elem
         model.save(experiment_name + '/model')
 
     if 'all' in arg_save or 'test' in arg_save:
-        ob_and_pred = pd.DataFrame({'observed' : evaluations[0].values,'predicted': [value[0] for value in evaluations[1]]},index = evaluations[0].index)
+        ob_and_pred = pd.DataFrame(
+            {'observed': evaluations[0].values, 'predicted': [value[0] for value in evaluations[1]]},
+            index=evaluations[0].index)
         ob_and_pred.to_csv(experiment_name + '/evaluations.csv')
     if 'all' in arg_save or 'elements' in arg_save:
         try:
@@ -64,40 +68,46 @@ def save_results(score = None, model = None, evaluations=None, arg_save=[], elem
             pass
 
 
+def weighted_average(iterable, weights):
+    return np.average(iterable, weights=weights)
 
-def weighted_average(iterable,weights):
-    return np.average(iterable,weights=weights)
 
 def geo_mean(iterable):
     iterable = np.abs(iterable)
-    return iterable.prod()**(1.0/len(iterable))
+    return iterable.prod() ** (1.0 / len(iterable))
 
-def weighted_geo_mean(iterable,weights):
-    iterable = np.abs(iterable)**(weights/np.sum(weights))
-    return iterable.prod()**(1.0/len(iterable))
+
+def weighted_geo_mean(iterable, weights):
+    iterable = np.abs(iterable) ** (weights / np.sum(weights))
+    return iterable.prod() ** (1.0 / len(iterable))
+
 
 def entropy(iterable):
     iterable = np.abs(iterable)
-    iterable = np.where(iterable >0.00000000001, iterable, 0.00000000001)
-    return -np.sum(iterable*np.log(iterable))
+    iterable = np.where(iterable > 0.00000000001, iterable, 0.00000000001)
+    return -np.sum(iterable * np.log(iterable))
 
-def weighted_entropy(iterable,weights):
+
+def weighted_entropy(iterable, weights):
     iterable = np.abs(iterable)
     iterable = np.where(iterable > 0.00000000001, iterable, 0.00000000001)
-    iterable = iterable*weights/np.sum(iterable*weights)
+    iterable = iterable * weights / np.sum(iterable * weights)
 
-    return -np.sum(iterable*np.log(iterable))
+    return -np.sum(iterable * np.log(iterable))
+
 
 def range_feature(iterable):
     max = iterable.max()
     min = iterable.min()
-    return max-min
+    return max - min
 
-def weighted_range_feature(iterable,weights):
-    iterable = iterable*weights/np.sum(weights)
+
+def weighted_range_feature(iterable, weights):
+    iterable = iterable * weights / np.sum(weights)
     return range_feature(iterable)
 
+
 def weighted_std(iterable, weights):
-    iterable = abs(iterable - np.average(iterable,weights = weights))**2
-    std = np.sqrt(np.average(iterable, weights = weights))
+    iterable = abs(iterable - np.average(iterable, weights=weights)) ** 2
+    std = np.sqrt(np.average(iterable, weights=weights))
     return std
