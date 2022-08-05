@@ -1,3 +1,13 @@
+"""
+Module with code to build and get ml model. This module cooperate tightly with the config file (yaml). Config file are
+used to list models we can use to make predictions  and to specify the (hyper)parameter of the model.
+Config file are also used to set parameter for the training phase.  This choice is implemented to respect the principle
+of configure, don't change: to define a new model we just have to write a new config file and we don't need to code
+anything; once the code is written and it works, there is no risk to break anything while we try different models.
+This implementation has also the benefit to add new machine learning algorithms without the need to change the rest of
+the code, therefore reducing the risk to introduce bug. The only change we have to do is within the model initializer if
+we want to provide config file for the new machine learning algorithms.
+"""
 # import os
 # os.environ["CUDA_DEVICE_ORDER"] = "PCI_BUS_ID"
 # os.environ["CUDA_VISIBLE_DEVICES"] = "1"
