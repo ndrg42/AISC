@@ -2,22 +2,17 @@ import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 import sys
-
-sys.path.append('src/data')
-sys.path.append('src/features')
-sys.path.append('src/model')
-sys.path.append('src/utils')
-import make_dataset
-import build_features
-import build_models
+from data import make_dataset
+from features import build_features
+from model import build_models
 import numpy as np
 import tensorflow as tf
 import yaml
 from yaml import Loader
 import sklearn as sk
-from utils import save_results
+from utils.utils import save_results
 import argparse
-
+import pathlib
 
 def comparison_parser():
     my_parser = argparse.ArgumentParser(prog='compare features strategy',
@@ -59,7 +54,7 @@ def main():
     atom_processed = atom_processor.get_atom_data()
 
     # Load SuperCon dataset
-    sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_tot.csv')[:1000]
+    sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon.csv')[:1000]
     # Initialize processor for SuperCon data
     supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
     # Process SuperCon data
@@ -80,12 +75,14 @@ def main():
         if args.config is not None:
             file_model_config = open(args.config[0])
         else:
-            file_model_config = open('config/latent_dim_change_model_config.yaml')
+            file_model_config = open('{0}/config/latent_dim_change_model_config.yaml'.format(
+                str(pathlib.Path(__file__).absolute().parent.parent.parent)))
 
     else:
         n_cycles = 3
         args = None
-        file_model_config = open('config/latent_dim_change_model_config.yaml')
+        file_model_config = open('{0}/config/latent_dim_change_model_config.yaml'.format(
+            str(pathlib.Path(__file__).absolute().parent.parent.parent)))
 
     models_config = yaml.load_all(file_model_config, Loader)
 
