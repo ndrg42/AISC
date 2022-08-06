@@ -11,11 +11,7 @@ from sklearn.impute import SimpleImputer
 from sklearn import preprocessing
 from sklearn.preprocessing import OneHotEncoder
 from sklearn.model_selection import train_test_split as np_train_test_split
-import sys
-
-sys.path.append('../data')
-sys.path.append('src/utils')
-import utils
+from utils import utils
 
 
 class AtomData:

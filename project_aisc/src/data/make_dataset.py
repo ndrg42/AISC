@@ -10,17 +10,14 @@ import pandas as pd
 import numpy as np
 from mendeleev import element
 from mendeleev import get_table
-import sys
-
-sys.path.append('src/features')
-
-from build_features import remove_columns_with_missing_elements
+import pathlib
+from features.build_features import remove_columns_with_missing_elements
 from chela.formula_handler import build_dataframe
 
 
 def get_supercon(sc_path='../data/raw/supercon.csv'):
     """ Load pandas DataFrame of superconductors and relative critical temperatures"""
-
+    sc_path = str(pathlib.Path(__file__).parent.parent.parent) + '/' + sc_path
     sc_dataframe = pd.read_csv(sc_path)
     return sc_dataframe
 
@@ -51,7 +48,7 @@ def get_periodictable(max_atomic_number=96, max_missing_value=30):
                                                           max_missing_value=max_missing_value,
                                                           )
 
-    path = "data/raw/"
+    path = str(pathlib.Path(__file__).parent.parent.parent) + "/data/raw/"
     features = ['thermal_conductivity', 'specific_heat', 'electron_affinity', 'density']
     features_and_scale = {'thermal_conductivity': 1, 'specific_heat': 1 / 1000, 'electron_affinity': 1 / 100,
                           'density': 1 / 1000}

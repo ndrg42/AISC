@@ -22,15 +22,11 @@ import tensorflow as tf
 
 from tensorflow.keras.layers import Dense, Input, Add, Multiply
 from tensorflow.keras.models import Model
-import sys
-
-sys.path.append('../data')
-sys.path.append('../features')
-
+import pathlib
 import yaml
 from yaml import Loader
 
-with open('config/model_config.yaml') as file:
+with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/model_config.yaml') as file:
     model_config = yaml.load(file, Loader)
 
 
@@ -183,7 +179,7 @@ def get_deepset_classifier(phi_setup=model_config['phi setup'],
     return classifier_deepset
 
 
-with open('config/available_model_config.yaml') as file:
+with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/available_model_config.yaml') as file:
     # Load a dictionary containing the model's name and the function to initialize them
     avaible_model = yaml.load(file, Loader)
 

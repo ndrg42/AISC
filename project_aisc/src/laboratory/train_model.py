@@ -1,24 +1,21 @@
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import sys
 
-sys.path.append('src/data')
-sys.path.append('src/features')
-sys.path.append('src/model')
-sys.path.append('src/utils')
-import make_dataset
-import build_features
-import build_models
-from utils import save_results
+from data import make_dataset
+from features import build_features
+from model import build_models
+from utils.utils import save_results
 import tensorflow as tf
 import argparse
 import yaml
 from yaml import Loader
+import pathlib
+import sys
 
 
 def train_parser():
-    with open('config/available_model_config.yaml') as file:
+    with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/available_model_config.yaml') as file:
         model_config = yaml.load(file, Loader)
 
     my_parser = argparse.ArgumentParser(prog='train model',
@@ -88,14 +85,14 @@ def main():
 
     elif 'classifier' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_garbage_50k.csv')
+        sc_dataframe = make_dataset.get_supercon( sc_path='data/raw/supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
     # If a custom model is passed through the config file we load it with yaml
     if model_config_path is not None:
         model_config_path = model_config_path[0]
     else:
-        model_config_path = 'config/model_config.yaml'
+        model_config_path = str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/config/model_config.yaml'
 
     with open(model_config_path) as file:
         model_config = yaml.load(file, Loader)
