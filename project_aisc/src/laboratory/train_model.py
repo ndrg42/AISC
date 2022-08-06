@@ -15,7 +15,7 @@ import sys
 
 
 def train_parser():
-    with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/available_model_config.yaml') as file:
+    with open(str(pathlib.Path(__file__).absolute().parent.parent.parent)+'/config/available_model_config.yaml') as file:
         model_config = yaml.load(file, Loader)
 
     my_parser = argparse.ArgumentParser(prog='train model',
@@ -85,7 +85,7 @@ def main():
 
     elif 'classifier' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon( sc_path='data/raw/supercon_garbage_50k.csv')
+        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
     # If a custom model is passed through the config file we load it with yaml

@@ -1,16 +1,12 @@
 import os
 
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-import sys
 
-sys.path.append('src/data')
-sys.path.append('src/features')
-sys.path.append('src/model')
-sys.path.append('src/utils')
-import make_dataset
-import build_features
-import build_models
-from utils import save_results
+import sys
+from data import make_dataset
+from features import build_features
+from model import build_models
+from utils.utils import save_results
 import tensorflow as tf
 import yaml
 from yaml import Loader
@@ -20,10 +16,11 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import argparse
 import mendeleev
+import pathlib
 
 
 def latent_parser():
-    with open('config/available_model_config.yaml') as file:
+    with open(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/config/available_model_config.yaml') as file:
         model_config = yaml.load(file, Loader)
 
     my_parser = argparse.ArgumentParser(prog='latent_dimension',
@@ -61,7 +58,8 @@ def latent_parser():
 
 
 def main():
-    with open('config/latent_dimension_config.yaml') as file:
+    with open(str(pathlib.Path(__file__).absolute().parent.parent.parent) +
+              '/config/latent_dimension_config.yaml') as file:
         model_config = yaml.load(file, Loader)
 
     # Load atomic data
@@ -88,7 +86,7 @@ def main():
 
     if 'regressor' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_tot.csv')
+        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon.csv')
         tc = sc_dataframe['critical_temp']
         # Select material with high temperature (tc > 10 K)
         mask_temperature_materials = np.where(tc > 10, 1, 0)
@@ -104,7 +102,8 @@ def main():
     if model_config_path is not None:
         model_config_path = model_config_path[0]
     else:
-        model_config_path = 'config/latent_dimension_config.yaml'
+        model_config_path = '{0}/config/latent_dimension_config.yaml'.format(
+            str(pathlib.Path(__file__).absolute().parent.parent.parent))
 
     with open(model_config_path) as file:
         model_config = yaml.load(file, Loader)
