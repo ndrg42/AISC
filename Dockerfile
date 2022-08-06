@@ -14,7 +14,8 @@ RUN "${CONDA_DIR}/envs/${conda_env}/bin/python" -m ipykernel install --user --na
 WORKDIR /AISC
 COPY requirements.txt ./
 RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install --quiet --no-cache-dir -r requirements.txt && \
-    echo "conda activate ${conda_env}" >> "${HOME}/.bashrc"
+    echo "conda activate ${conda_env}" >> "${HOME}/.bashrc" && \
+    echo "pip install -e ." >>  "${HOME}/.bashrc"
 
 
 
