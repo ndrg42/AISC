@@ -80,12 +80,12 @@ def main():
     # We keep pd.Series because it keeps track of the index in the test
     if 'regressor' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon.csv')
+        sc_dataframe = make_dataset.get_supercon(name='supercon.csv')
         tc = sc_dataframe['critical_temp']
 
     elif 'classifier' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_garbage_50k.csv')
+        sc_dataframe = make_dataset.get_supercon(name='supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
 
     # If a custom model is passed through the config file we load it with yaml

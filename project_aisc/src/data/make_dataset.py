@@ -15,10 +15,10 @@ from features.build_features import remove_columns_with_missing_elements
 from chela.formula_handler import build_dataframe
 
 
-def get_supercon(sc_path='../data/raw/supercon.csv'):
+def get_supercon(name='supercon.csv'):
     """ Load pandas DataFrame of superconductors and relative critical temperatures"""
-    sc_path = str(pathlib.Path(__file__).parent.parent.parent) + '/' + sc_path
-    sc_dataframe = pd.read_csv(sc_path)
+    name = str(pathlib.Path(__file__).parent.parent.parent) + '/data/raw/' + name
+    sc_dataframe = pd.read_csv(name)
     return sc_dataframe
 
 

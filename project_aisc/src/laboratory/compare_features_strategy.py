@@ -54,7 +54,7 @@ def main():
     atom_processed = atom_processor.get_atom_data()
 
     # Load SuperCon dataset
-    sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon.csv')[:1000]
+    sc_dataframe = make_dataset.get_supercon(name='supercon.csv')[:1000]
     # Initialize processor for SuperCon data
     supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
     # Process SuperCon data

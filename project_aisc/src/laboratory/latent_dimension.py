@@ -86,7 +86,7 @@ def main():
 
     if 'regressor' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon.csv')
+        sc_dataframe = make_dataset.get_supercon(name='supercon.csv')
         tc = sc_dataframe['critical_temp']
         # Select material with high temperature (tc > 10 K)
         mask_temperature_materials = np.where(tc > 10, 1, 0)
@@ -94,7 +94,7 @@ def main():
 
     elif 'classifier' in model_name:
         # Load SuperCon dataset
-        sc_dataframe = make_dataset.get_supercon(sc_path='data/raw/supercon_garbage_50k.csv')
+        sc_dataframe = make_dataset.get_supercon(name='supercon_garbage_50k.csv')
         tc = sc_dataframe['critical_temp'].apply(lambda x: int(x > 0))
         mask_temperature_materials = tc
         legend_latent_space = ['Superconductor', 'Non Superconductor']
