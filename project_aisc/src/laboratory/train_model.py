@@ -98,7 +98,7 @@ def main():
         model_config = yaml.load(file, Loader)
 
     # Initialize processor for SuperCon data
-    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
+    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe)
     # Process SuperCon data
     supercon_processed = supercon_processor.get_dataset()
 

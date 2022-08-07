@@ -111,3 +111,11 @@ def weighted_std(iterable, weights):
     iterable = abs(iterable - np.average(iterable, weights=weights)) ** 2
     std = np.sqrt(np.average(iterable, weights=weights))
     return std
+
+class ModelNotFound(ValueError):
+    """Model not found in config file: available_model_config.yaml"""
+    pass
+
+class ModelNotBuilt(ValueError):
+    """Error in model building"""
+    pass

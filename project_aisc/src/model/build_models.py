@@ -25,6 +25,7 @@ from tensorflow.keras.models import Model
 import pathlib
 import yaml
 from yaml import Loader
+from utils.utils import ModelNotFound, ModelNotBuilt
 
 with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/model_config.yaml') as file:
     model_config = yaml.load(file, Loader)
@@ -187,18 +188,22 @@ with open(str(pathlib.Path(__file__).parent.parent.parent) + '/config/available_
 def get_model(model_name='classifier', model_config=None):
     """Retrieve and return the specified model using available_model (dict) as a switch control."""
 
+    # Return function to get ml model; None if model name is not present in config file
     model_builder = avaible_model.get(model_name)
 
     if model_config is None:
-        try:
+
+        if model_builder is None:
+            raise ModelNotFound
+        else:
             return model_builder()
-        except:
-            print('Model not found.')
     else:
-        try:
-            return model_builder(*model_config_initializer(model_config=model_config, model_name=model_name))
-        except:
-            print('Model not found.')
+        model = model_builder(*model_config_initializer(model_config=model_config, model_name=model_name))
+
+        if model is None:
+            raise ModelNotBuilt
+        else:
+            return model
 
 
 def model_config_initializer(model_config, model_name):
