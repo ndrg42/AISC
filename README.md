@@ -51,7 +51,8 @@ AISC
   # Run Experiments
   We can reproduce 3 experiments:
   ```
-  #First move in the project_aisc forlder
+  #We can run the experiments from any folder
+  #First move in the project_aisc folder
   cd project_aisc
 
   #Train and test the model
@@ -64,7 +65,7 @@ AISC
   python src/laboratory/compare_features_strategy.py
 
   ```
-  With the appropriace flags is possible to use customized model and save the results.
+  With the appropriate flags is possible to use customized model and save the results.
 
   # Analyze Experiments
 We can both do eda on SuperCon data or on experiment results
@@ -73,5 +74,7 @@ We can both do eda on SuperCon data or on experiment results
 cd notebook/
 
 #Open the browser and pick up the desired exploration
-jupyter-notebook
+jupyter-nbclassic
+
+#Change kernel to python369 from kernel tab
 ```
