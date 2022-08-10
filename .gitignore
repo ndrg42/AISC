@@ -1,0 +1,9 @@
+__pycache__
+*.png
+.pytest_cache
+.idea
+.ipynb_checkpoints
+**/project_aisc/data/
+**/project_aisc/models/
+*.pyc
+*.ipynb
