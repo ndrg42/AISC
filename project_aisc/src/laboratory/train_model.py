@@ -12,6 +12,7 @@ import yaml
 from yaml import Loader
 import pathlib
 import sys
+import mlflow
 
 
 def train_parser():
@@ -52,6 +53,9 @@ def train_parser():
 
 
 def main():
+    mlflow.set_tracking_uri(str(pathlib.Path(__file__).absolute().parent.parent.parent) + "/data/experiments/mlruns")
+    mlflow.set_experiment("my-experiment")
+
     # Load atomic data
     ptable = make_dataset.get_periodictable()
     # Initialize the processor for atomic data
@@ -109,13 +113,21 @@ def main():
     # Define model and train it
     model = build_models.get_model(model_name=model_name, model_config=model_config)
     callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
-    model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
+    with mlflow.start_run():
+        mlflow.tensorflow.autolog(log_models=True)
+        model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
 
     # Save scores and metrics' name
-    score = model.evaluate(X_test, Y_test, verbose=0)
-    metrics_name = [metric.name for metric in model.metrics]
+        score = model.evaluate(X_test, Y_test, verbose=0)
+        metrics_name = [metric.name for metric in model.metrics]
+    #mlflow.log_params(model_config['train setup']['fit setup'])
+
+
+
+
     # Print the metric and the relative score of the model
     for name, value in zip(metrics_name, score):
+        #mlflow.log_metric(name, value)
         print(name + ':', value)
 
     if args is not None and args.save is not None:
