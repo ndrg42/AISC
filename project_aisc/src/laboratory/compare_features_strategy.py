@@ -13,6 +13,7 @@ import sklearn as sk
 from utils.utils import save_results
 import argparse
 import pathlib
+import mlflow
 
 def comparison_parser():
     my_parser = argparse.ArgumentParser(prog='compare features strategy',
@@ -27,10 +28,15 @@ def comparison_parser():
                            help="""Use a custom config for the ML model."""
                            )
 
-    my_parser.add_argument('-save',
-                           action='store_true',
-                           help="Save the results into a folder ",
+
+    my_parser.add_argument('--no-save',
+                           action='store',
+                           nargs='?',
+                           help="Don't save/track results with mlflow. Arguments specify what to not track",
+                           choices=['all'],
+                           const='all'
                            )
+
 
     my_parser.add_argument('-cycles',
                            action='store',
@@ -46,6 +52,10 @@ def comparison_parser():
 
 
 def main():
+
+    mlflow.set_tracking_uri(str(pathlib.Path(__file__).absolute().parent.parent.parent) + "/data/experiments/mlruns")
+    mlflow.set_experiment('Comparison')
+
     # Load atomic data
     ptable = make_dataset.get_periodictable()
     # Initialize the processor for atomic data
@@ -78,53 +88,67 @@ def main():
             file_model_config = open('{0}/config/latent_dim_change_model_config.yaml'.format(
                 str(pathlib.Path(__file__).absolute().parent.parent.parent)))
 
+        if args.no_save == 'all':
+            disable_autolog = True
+        else:
+            disable_autolog = False
     else:
         n_cycles = 3
+        disable_autolog = False
         args = None
         file_model_config = open('{0}/config/latent_dim_change_model_config.yaml'.format(
             str(pathlib.Path(__file__).absolute().parent.parent.parent)))
 
     models_config = yaml.load_all(file_model_config, Loader)
 
-    deep_set_score = {}
-    for model_config in models_config:
-        deep_set_score[model_config['latent dim']] = np.array([])
+    with mlflow.start_run():
+        mlflow.tensorflow.autolog(disable=True, log_models=False)
+        deep_set_score = {}
+        for model_config in models_config:
+            deep_set_score[model_config['latent dim']] = np.array([])
+            for i in range(n_cycles):
+                with mlflow.start_run(run_name='latent_'+str(model_config['latent dim'])+'_model_' + str(n_cycles),
+                                      nested=True):
+                    mlflow.tensorflow.autolog(log_models=False)
+                    X, X_test, Y, Y_test = build_features.train_test_split(supercon_processed, tc_regression, 0.2)
+                    X, X_val, Y, Y_val = build_features.train_test_split(X, Y, 0.2)
+
+                    # Define model and train it
+                    model = build_models.get_model(model_name='regressor', model_config=model_config)
+                    callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5, patience=40, restore_best_weights=True)]
+                    model.fit(X, Y, validation_data=(X_val, Y_val), epochs=1, callbacks=callbacks)
+                    score = model.evaluate(X_test, Y_test, verbose=0)
+                    if args is not None and args.save is not None:
+                        save_results(score, model, arg_save=['score'])
+
+                    # Save scores and metrics' name
+                    deep_set_score[model_config['latent dim']] = np.append(deep_set_score[model_config['latent dim']],
+                                                                           model.evaluate(X_test, Y_test, verbose=0))
+
+        file_model_config.close()
+        analytical_supercon_dataset_processed = supercon_processor.get_analytical_dataset()
+        nn_score = {}
+        nn_score['80'] = np.array([])
         for i in range(n_cycles):
-            X, X_test, Y, Y_test = build_features.train_test_split(supercon_processed, tc_regression, 0.2)
-            X, X_val, Y, Y_val = build_features.train_test_split(X, Y, 0.2)
+            with mlflow.start_run(run_name='fixed_model_' + str(n_cycles),
+                                  nested=True):
+                mlflow.tensorflow.autolog(log_models=False)
 
-            # Define model and train it
-            model = build_models.get_model(model_name='regressor', model_config=model_config)
-            callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5, patience=40, restore_best_weights=True)]
-            model.fit(X, Y, validation_data=(X_val, Y_val), epochs=1, callbacks=callbacks)
-            score = model.evaluate(X_test, Y_test, verbose=0)
-            if args is not None and args.save is not None:
-                save_results(score, model, arg_save=['score'])
+                X, X_test, Y, Y_test = sk.model_selection.train_test_split(analytical_supercon_dataset_processed, tc_regression,
+                                                                           test_size=0.2)
+                X, X_val, Y, Y_val = sk.model_selection.train_test_split(X, Y, test_size=0.2)
 
-            # Save scores and metrics' name
-            deep_set_score[model_config['latent dim']] = np.append(deep_set_score[model_config['latent dim']],
-                                                                   model.evaluate(X_test, Y_test, verbose=0))
+                # Define model and train it
+                model = build_models.get_model(model_name='nn regressor', )
+                callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5, patience=40, restore_best_weights=True)]
+                model.fit(X, Y, validation_data=(X_val, Y_val), epochs=1, callbacks=callbacks)
+                # Save scores and metrics' name
+                score = model.evaluate(X_test, Y_test, verbose=0)
+                if args is not None and args.save is not None:
+                    save_results(score, model, arg_save=['score'])
 
-    file_model_config.close()
-    analytical_supercon_dataset_processed = supercon_processor.get_analytical_dataset()
-    nn_score = {}
-    nn_score['80'] = np.array([])
-    for i in range(n_cycles):
-        X, X_test, Y, Y_test = sk.model_selection.train_test_split(analytical_supercon_dataset_processed, tc_regression,
-                                                                   test_size=0.2)
-        X, X_val, Y, Y_val = sk.model_selection.train_test_split(X, Y, test_size=0.2)
-
-        # Define model and train it
-        model = build_models.get_model(model_name='nn regressor', )
-        callbacks = [tf.keras.callbacks.EarlyStopping(min_delta=5, patience=40, restore_best_weights=True)]
-        model.fit(X, Y, validation_data=(X_val, Y_val), epochs=1, callbacks=callbacks)
-        # Save scores and metrics' name
-        score = model.evaluate(X_test, Y_test, verbose=0)
-        if args is not None and args.save is not None:
-            save_results(score, model, arg_save=['score'])
-
-        # Save scores and metrics' name
-        nn_score['80'] = np.append(nn_score['80'], model.evaluate(X_test, Y_test, verbose=0))
+                # Save scores and metrics' name
+                nn_score['80'] = np.append(nn_score['80'], model.evaluate(X_test, Y_test, verbose=0))
 
     print('\nDeep Set')
     for latent_dim in deep_set_score.keys():
