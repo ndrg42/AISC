@@ -44,12 +44,6 @@ def latent_parser():
                                    The model need to be specified"""
                            )
 
-    my_parser.add_argument('-save',
-                           action='store',
-                           nargs='+',
-                           help="Save the results into a folder ",
-                           choices=['model', 'score', 'test', 'all', 'elements', 'materials'],
-                           )
     my_parser.add_argument('--no-save',
                            action='store',
                            nargs='?',
@@ -128,7 +122,7 @@ def main():
         model_config = yaml.load(file, Loader)
 
     mlflow.set_tracking_uri(str(pathlib.Path(__file__).absolute().parent.parent.parent) + "/data/experiments/mlruns")
-    mlflow.set_experiment('0')
+    mlflow.set_experiment('Latent' + model_name)
 
     # Load atomic data
     ptable = make_dataset.get_periodictable()
