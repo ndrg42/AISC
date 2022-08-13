@@ -17,7 +17,7 @@ import matplotlib.pyplot as plt
 import argparse
 import mendeleev
 import pathlib
-
+import mlflow
 
 def latent_parser():
     with open(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/config/available_model_config.yaml') as file:
@@ -50,8 +50,16 @@ def latent_parser():
                            help="Save the results into a folder ",
                            choices=['model', 'score', 'test', 'all', 'elements', 'materials'],
                            )
+    my_parser.add_argument('--no-save',
+                           action='store',
+                           nargs='?',
+                           help="Don't save/track results with mlflow. Arguments specify what to not track",
+                           choices=['model', 'all', 'latent'],
+                           const='all'
+                           )
 
-    # Parse the args
+
+    # Parse arguments from cli
     args = my_parser.parse_args()
 
     return args
@@ -61,13 +69,6 @@ def main():
     with open(str(pathlib.Path(__file__).absolute().parent.parent.parent) +
               '/config/latent_dimension_config.yaml') as file:
         model_config = yaml.load(file, Loader)
-
-    # Load atomic data
-    ptable = make_dataset.get_periodictable()
-    # Initialize the processor for atomic data
-    atom_processor = build_features.AtomData(ptable)
-    # Process atomic data
-    atom_processed = atom_processor.get_atom_data()
 
     len_argv = len(sys.argv)
     model_config_path = None
@@ -79,10 +80,28 @@ def main():
         else:
             model_name = 'linear regressor'
         model_config_path = args.config
+        if args.no_save == 'all':
+            disable_autolog = True
+            log_models = False
+            log_latent = False
+        elif args.no_save == 'model':
+            disable_autolog = False
+            log_models = False
+            log_latent = False
+        elif args.no_save == 'latent':
+            disable_autolog = False
+            log_models = True
+            log_latent = False
+        else:
+            disable_autolog = False
+            log_models = True
+            log_latent = True
 
     else:
         model_name = 'linear regressor'
-        args = None
+        disable_autolog = False
+        log_models = True
+        log_latent = True
 
     if 'regressor' in model_name:
         # Load SuperCon dataset
@@ -108,6 +127,16 @@ def main():
     with open(model_config_path) as file:
         model_config = yaml.load(file, Loader)
 
+    mlflow.set_tracking_uri(str(pathlib.Path(__file__).absolute().parent.parent.parent) + "/data/experiments/mlruns")
+    mlflow.set_experiment('0')
+
+    # Load atomic data
+    ptable = make_dataset.get_periodictable()
+    # Initialize the processor for atomic data
+    atom_processor = build_features.AtomData(ptable)
+    # Process atomic data
+    atom_processed = atom_processor.get_atom_data()
+
     # Initialize processor for SuperCon data
     supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
     # Process SuperCon data
@@ -117,24 +146,40 @@ def main():
                                                            model_config['train setup']['test split'])
     X, X_val, Y, Y_val = build_features.train_test_split(X, Y, model_config['train setup']['validation split'])
 
-    # Define model and train it
-    model = build_models.get_model(model_name=model_name, model_config=model_config)
-    callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
-    model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
-    score = model.evaluate(X_test, Y_test, verbose=0)
+    with mlflow.start_run():
+        # Define model and train it
+        model = build_models.get_model(model_name=model_name, model_config=model_config)
+        callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
 
-    materials_representation = pd.DataFrame(model.material_representation(supercon_processed).numpy(),
+        print(f"disable autolog : {disable_autolog}\nlog models : {log_models}\nlog latent : {log_latent}")
+
+        # Logs metrics, params, model
+        mlflow.tensorflow.autolog(disable=disable_autolog, log_models=log_models)
+
+        model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
+
+        score = model.evaluate(X_test, Y_test, verbose=0)
+        print(score)
+
+        materials_representation = pd.DataFrame(model.material_representation(supercon_processed).numpy(),
+                                                columns=['latent feature'])
+
+        elements = [mendeleev.element(i).symbol for i in range(1, 97)]
+
+        elements_dataframe = pd.DataFrame(np.eye(96), columns=elements)
+        atoms_processor = build_features.SuperConData(atom_processed, elements_dataframe)
+        # Process SuperCon data
+        atoms_processed = atoms_processor.get_dataset()
+
+        atoms_representation = pd.DataFrame(model.atom_representation(atoms_processed).numpy(), index=elements,
                                             columns=['latent feature'])
 
-    elements = [mendeleev.element(i).symbol for i in range(1, 97)]
+        if log_latent:
+            # Save predictions of the model
+            artifact_uri = mlflow.get_artifact_uri()
+            atoms_representation.to_csv(artifact_uri + "/elements.csv", index=False)
+            materials_representation.to_csv(artifact_uri + "/materials.csv", index=False)
 
-    elements_dataframe = pd.DataFrame(np.eye(96), columns=elements)
-    atoms_processor = build_features.SuperConData(atom_processed, elements_dataframe)
-    # Process SuperCon data
-    atoms_processed = atoms_processor.get_dataset()
-
-    atoms_representation = pd.DataFrame(model.atom_representation(atoms_processed).numpy(), index=elements,
-                                        columns=['latent feature'])
     fig, axs = plt.subplots(1, 2, figsize=(11, 8))
 
     sns.histplot(data=materials_representation, x='latent feature', hue=mask_temperature_materials, ax=axs[0])
@@ -158,9 +203,10 @@ def main():
     plt.show()
     print(atoms_representation)
 
-    if args is not None and args.save is not None:
-        save_results(score, model, [Y_test, model.predict(X_test)], args.save, atoms_representation,
-                     materials_representation)
+
+#    if args is not None and args.save is not None:
+#        save_results(score, model, [Y_test, model.predict(X_test)], args.save, atoms_representation,
+#                     materials_representation)
 
 
 if __name__ == '__main__':
