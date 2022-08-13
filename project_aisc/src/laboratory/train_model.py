@@ -7,7 +7,6 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from data import make_dataset
 from features import build_features
 from model import build_models
-from utils.utils import save_results
 import tensorflow as tf
 import argparse
 import yaml
@@ -120,9 +119,16 @@ def main():
     # Process SuperCon data
     supercon_processed = supercon_processor.get_dataset()
 
-    X, X_test, Y, Y_test = build_features.train_test_split(supercon_processed, tc,
-                                                           model_config['train setup']['test split'])
-    X, X_val, Y, Y_val = build_features.train_test_split(X, Y, model_config['train setup']['validation split'])
+    #X, X_test, Y, Y_test = build_features.train_test_split(supercon_processed, tc,
+    #                                                       model_config['train setup']['test split'])
+    #X, X_val, Y, Y_val = build_features.train_test_split(X, Y, model_config['train setup']['validation split'])
+
+    X = list(np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/train/X_train.npy'))
+    Y = np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/train/Y_train.npy')
+    X_val = list(np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/val/X_val.npy'))
+    Y_val = np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/val/Y_val.npy')
+    X_test = list(np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/test/X_test.npy'))
+    Y_test = np.load(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/test/Y_test.npy')
 
     with mlflow.start_run():
 
@@ -139,10 +145,12 @@ def main():
         score = model.evaluate(X_test, Y_test, verbose=0)
         metrics_name = [metric.name for metric in model.metrics]
 
-        if log_models:
-            # Save predictions of the model
-            artifact_uri = mlflow.get_artifact_uri()
-            np.save(artifact_uri + "/predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
+        artifact_uri = mlflow.get_artifact_uri()
+
+
+    if log_models:
+        # Save predictions of the model
+        np.save(artifact_uri + "/predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
 
     # Print metrics of the model
     for name, value in zip(metrics_name, score):
