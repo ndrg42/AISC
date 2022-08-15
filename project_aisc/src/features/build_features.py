@@ -10,7 +10,7 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn import preprocessing
 from sklearn.preprocessing import OneHotEncoder
-from sklearn.model_selection import train_test_split as np_train_test_split
+from sklearn.model_selection import train_test_split as sk_train_test_split
 from utils import utils
 
 
@@ -289,18 +289,20 @@ class SuperConData:
         return expanded_row
 
 
-def train_test_split(data, label, test_size=0.2):
+def train_test_split(data, label, test_size=0.2, seed=42):
     """Custom train-test split.
 
        Args:
            data: A list of numpy array containing atom's representation
            label: List or numpy array or pandas Series containing labels
            test_size: fraction of data to use as test set (default 0.2)
+           seed: Int controlling the data's shuffle. Useful to make experiments reproducible.
        Returns:
            X,X_test,y,y_test: A tuple containing in order data, test's data, label, test's label
        """
 
-    X, X_test, Y, Y_test = np_train_test_split(np.moveaxis(np.array(data), 0, 1), label, test_size=test_size)
+    X, X_test, Y, Y_test = sk_train_test_split(np.moveaxis(np.array(data), 0, 1), label, test_size=test_size,
+                                               random_state=seed)
     X = list(np.moveaxis(X, 0, 1))
     X_test = list(np.moveaxis(X_test, 0, 1))
 
