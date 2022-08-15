@@ -29,7 +29,7 @@ def main():
     MlflowClient.log_metric(run_id=run_id, key='test_mean_squared_error', value=float(mse))
     MlflowClient.log_metric(run_id=run_id, key='test_mean_absolute_error', value=float(tf.math.sqrt(mse)))
 
-    artifact_uri = home_path+"/data/experiments/mlruns/"+experiment_id+"/"+run_id+"/artifacts
+    artifact_uri = home_path+"/data/experiments/mlruns/"+experiment_id+"/"+run_id+"/artifacts"
     # Save predictions of the model
     np.save(artifact_uri + "/predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
 
