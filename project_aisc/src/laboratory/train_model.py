@@ -15,6 +15,7 @@ import mlflow
 import numpy as np
 import json
 
+
 def train_parser():
     with open(str(pathlib.Path(
             __file__).absolute().parent.parent.parent) + '/config/available_model_config.yaml') as file:
@@ -85,7 +86,6 @@ def main():
         disable_autolog = False
         log_models = True
 
-
     # If a custom model is passed through the config file we load it with yaml
     if model_config_path is not None:
         model_config_path = model_config_path[0]
@@ -114,9 +114,8 @@ def main():
 
         model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
 
-
     with open(home_path + '/../active_experiments.json', 'w') as outfile:
-        json.dump({'run id': run.info.run_id , 'experiment id': run.info.experiment_id}, outfile)
+        json.dump({'run id': run.info.run_id, 'experiment id': run.info.experiment_id}, outfile)
 
 
 if __name__ == '__main__':

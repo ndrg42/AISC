@@ -29,7 +29,7 @@ def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_spli
         tc = pd.concat([tc_supercon,tc_garbage], ignore_index=True)
 
     # Initialize processor for SuperCon data
-    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe)
+    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
     # Process SuperCon data
     supercon_processed = supercon_processor.get_dataset()
 
