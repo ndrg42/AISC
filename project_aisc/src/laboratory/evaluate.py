@@ -112,7 +112,7 @@ def main():
         np.save(artifact_uri + "/ima_predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
 
     print(Y_ima_pred)
-
+    print(run_id)
     if no_save == 'model':
         try:
             shutil.rmtree(home_path + "/data/experiments/mlruns/" + experiment_id + "/" + run_id + "/artifacts/model")
