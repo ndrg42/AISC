@@ -1,3 +1,8 @@
+import os
+
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+
+import shutil
 import mlflow
 import numpy as np
 import pathlib
@@ -25,7 +30,7 @@ def evaluate_parser():
                            action='store',
                            nargs='?',
                            help="Don't save/track results with mlflow. Arguments specify what to not track",
-                           choices=['model', 'all'],
+                           choices=['artifacts', 'model','all'],
                            const='all'
                            )
 
@@ -66,9 +71,14 @@ def main():
         else:
             problem = 'regression'
             warnings.warn("Problem not specified! Default problem is regression")
+        if args.no_save is not None:
+            no_save = args.no_save
+        else:
+            no_save = None
     else:
         problem = 'regression'
         warnings.warn("Problem not specified! Default problem is regression")
+        no_save = None
 
     X_test = list(np.load(home_path + '/data/processed/test/X_test.npy'))
     Y_test = np.load(home_path + '/data/processed/test/Y_test.npy')
@@ -83,8 +93,9 @@ def main():
     [MlflowClient.log_metric(run_id=run_id, key='test_' + metric, value=value) for metric, value in metrics.items()]
 
     artifact_uri = home_path + "/data/experiments/mlruns/" + experiment_id + "/" + run_id + "/artifacts"
-    # Save predictions of the model
-    np.save(artifact_uri + "/predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
+    if no_save is None:
+        # Save predictions of the model
+        np.save(artifact_uri + "/predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
 
     X_hosono = list(np.load(home_path + "/data/processed/hosono.npy"))
     Y_hosono = np.load(home_path + '/data/processed/Y_hosono.npy')
@@ -93,11 +104,26 @@ def main():
     metrics = get_metrics(Y_pred=Y_hosono_pred, Y_true=Y_hosono, problem=problem)
     print("Evaluation on Hosono:")
     [print(f"{item[0]} : {item[1]}") for item in metrics.items()]
+    [MlflowClient.log_metric(run_id=run_id, key='hosono_' + metric, value=value) for metric, value in metrics.items()]
 
     X_ima = list(np.load(home_path + "/data/processed/ima.npy"))
     Y_ima_pred = tf.reshape(model.predict(X_ima), shape=(-1,))
+    if no_save is None:
+        np.save(artifact_uri + "/ima_predictions.npy", tf.reshape(model.predict(X_test), shape=(-1,)).numpy())
 
     print(Y_ima_pred)
+
+    if no_save == 'model':
+        try:
+            shutil.rmtree(home_path + "/data/experiments/mlruns/" + experiment_id + "/" + run_id + "/artifacts/model")
+        except:
+            print("Error")
+    elif no_save == 'all':
+        try:
+            shutil.rmtree(home_path + "/data/experiments/mlruns/" + experiment_id + "/" + run_id)
+        except:
+            print("Error")
+
 
 
 if __name__ == '__main__':
