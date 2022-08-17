@@ -8,7 +8,8 @@ import pathlib
 import numpy as np
 
 
-def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_split, seed):
+def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_split, other_data=None, seed=42,
+                    padding=10):
     # Load atomic data
     ptable = make_dataset.get_periodictable()
     # Initialize the processor for atomic data
@@ -22,14 +23,14 @@ def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_spli
     elif problem == 'classification':
         supercon_dataframe = make_dataset.get_supercon(name=supercon_data)
         garbagein_dataframe = make_dataset.get_supercon(name=garbagein_data)
-        tc_supercon = supercon_dataframe['critical_temp']
-        tc_garbage = garbagein_dataframe['critical_temp']
+        tc_supercon = np.ones(supercon_dataframe['critical_temp'].shape[0])
+        tc_garbage = np.zeros(garbagein_dataframe['critical_temp'].shape[0])
         # Merge supercondutors data non-superconductors data
-        sc_dataframe = pd.concat([supercon_dataframe, garbagein_data], ignore_index=True)
-        tc = pd.concat([tc_supercon,tc_garbage], ignore_index=True)
+        sc_dataframe = pd.concat([supercon_dataframe, garbagein_dataframe], ignore_index=True)
+        tc = np.concatenate([tc_supercon, tc_garbage])
 
     # Initialize processor for SuperCon data
-    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=10)
+    supercon_processor = build_features.SuperConData(atom_processed, sc_dataframe, padding=padding)
     # Process SuperCon data
     supercon_processed = supercon_processor.get_dataset()
 
@@ -49,9 +50,26 @@ def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_spli
     np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/test/Y_test.npy',
             np.array(Y_test))
 
+    if other_data is not None:
+        for data_name in other_data:
+            external_dataset = make_dataset.get_supercon(name="../external/" + data_name)
+            tc = None
+            if 'critical_temp' in external_dataset.columns:
+                tc = external_dataset['critical_temp']
+            supercon_processor = build_features.SuperConData(atom_processed, external_dataset, padding=padding)
+            supercon_processed = supercon_processor.get_dataset()
+            np.save(
+                str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/' + data_name.replace(
+                    'csv', 'npy'), np.array(supercon_processed))
+            if tc is not None:
+                np.save(
+                    str(pathlib.Path(
+                        __file__).absolute().parent.parent.parent) + '/data/processed/Y_' + data_name.replace(
+                        'csv', 'npy'), np.array(tc))
+
 
 if __name__ == '__main__':
-    preprocessing_config_path = str(pathlib.Path(__file__).absolute().parent.parent.parent) +\
+    preprocessing_config_path = str(pathlib.Path(__file__).absolute().parent.parent.parent) + \
                                 '/config/preprocessing.yaml'
 
     with open(preprocessing_config_path) as file:
