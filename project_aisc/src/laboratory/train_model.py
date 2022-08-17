@@ -1,7 +1,5 @@
 import os
 
-import pandas
-
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 from model import build_models
