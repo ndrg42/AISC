@@ -39,14 +39,6 @@ def train_parser():
                                    The model need to be specified"""
                            )
 
-    my_parser.add_argument('--no-save',
-                           action='store',
-                           nargs='?',
-                           help="Don't save/track results with mlflow. Arguments specify what to not track",
-                           choices=['model', 'all'],
-                           const='all'
-                           )
-
     # Parse the args
     args = my_parser.parse_args()
 
@@ -69,20 +61,8 @@ def main():
         else:
             model_name = 'regressor'
         model_config_path = args.config
-
-        if args.no_save == 'all':
-            disable_autolog = True
-            log_models = False
-        elif args.no_save == 'model':
-            disable_autolog = False
-            log_models = False
-        else:
-            disable_autolog = False
-            log_models = True
     else:
         model_name = 'regressor'
-        disable_autolog = False
-        log_models = True
 
     # If a custom model is passed through the config file we load it with yaml
     if model_config_path is not None:
@@ -108,12 +88,20 @@ def main():
         callbacks = [tf.keras.callbacks.EarlyStopping(**model_config['train setup']['early stopping setup'])]
 
         # Logs metrics, params, model
-        mlflow.tensorflow.autolog(disable=disable_autolog, log_models=log_models)
-
+        mlflow.tensorflow.autolog(log_models=False)
         model.fit(X, Y, validation_data=(X_val, Y_val), callbacks=callbacks, **model_config['train setup']['fit setup'])
+        run_id = run.info.run_id
+        experiment_id = run.info.experiment_id
+    artifact_path = home_path + "/data/experiments/mlruns/" + experiment_id + "/" + run_id + "/artifacts/model"
+
+    mlflow.keras.save_model(
+        keras_model=model,
+        path=artifact_path,
+    )
 
     with open(home_path + '/../active_experiments.json', 'w') as outfile:
-        json.dump({'run id': run.info.run_id, 'experiment id': run.info.experiment_id}, outfile)
+        json.dump({'run id': run_id, 'experiment id': experiment_id}, outfile)
+    print({'run id': run.info.run_id, 'experiment id': run.info.experiment_id})
 
 
 if __name__ == '__main__':
