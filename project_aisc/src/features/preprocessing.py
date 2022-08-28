@@ -6,10 +6,14 @@ import yaml
 from yaml import Loader
 import pathlib
 import numpy as np
+from sklearn.model_selection import train_test_split as sk_train_test_split
+import json
 
 
 def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_split, other_data=None, seed=42,
                     padding=10):
+
+    home_path = str(pathlib.Path(__file__).absolute().parent.parent.parent)
     # Load atomic data
     ptable = make_dataset.get_periodictable()
     # Initialize the processor for atomic data
@@ -37,18 +41,24 @@ def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_spli
     X, X_test, Y, Y_test = build_features.train_test_split(supercon_processed, tc, test_split, seed)
     X, X_val, Y, Y_val = build_features.train_test_split(X, Y, val_split, seed)
 
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/train/X_train.npy',
-            np.array(X))
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/train/Y_train.npy',
-            np.array(Y))
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/val/X_val.npy',
-            np.array(X_val))
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/val/Y_val.npy',
-            np.array(Y_val))
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/test/X_test.npy',
-            np.array(X_test))
-    np.save(str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/test/Y_test.npy',
-            np.array(Y_test))
+    np.save(home_path + '/data/processed/train/X_train.npy', np.array(X))
+    np.save(home_path + '/data/processed/train/Y_train.npy', np.array(Y))
+    np.save(home_path + '/data/processed/val/X_val.npy', np.array(X_val))
+    np.save(home_path + '/data/processed/val/Y_val.npy', np.array(Y_val))
+    np.save(home_path + '/data/processed/test/X_test.npy', np.array(X_test))
+    np.save(home_path + '/data/processed/test/Y_test.npy', np.array(Y_test))
+
+
+    index_dataset = [i for i in tc.index]
+    index_train, index_test = sk_train_test_split(index_dataset, test_size=test_split, random_state=seed)
+    index_train, index_val = sk_train_test_split(index_train, test_size=test_split , random_state=seed)
+    index_data = {'seed': seed,
+                  'index_train': index_train,
+                  'index_val': index_val,
+                  'index_test': index_test}
+
+    with open(home_path + '/../index_train_test_data.json', 'w') as file:
+        json.dump(index_data, file)
 
     if other_data is not None:
         for data_name in other_data:
@@ -58,14 +68,9 @@ def preprocess_data(problem, supercon_data, garbagein_data, test_split, val_spli
                 tc = external_dataset['critical_temp']
             supercon_processor = build_features.SuperConData(atom_processed, external_dataset, padding=padding)
             supercon_processed = supercon_processor.get_dataset()
-            np.save(
-                str(pathlib.Path(__file__).absolute().parent.parent.parent) + '/data/processed/' + data_name.replace(
-                    'csv', 'npy'), np.array(supercon_processed))
+            np.save(home_path + '/data/processed/' + data_name.replace('csv', 'npy'), np.array(supercon_processed))
             if tc is not None:
-                np.save(
-                    str(pathlib.Path(
-                        __file__).absolute().parent.parent.parent) + '/data/processed/Y_' + data_name.replace(
-                        'csv', 'npy'), np.array(tc))
+                np.save(home_path + '/data/processed/Y_' + data_name.replace('csv', 'npy'), np.array(tc))
 
 
 if __name__ == '__main__':
