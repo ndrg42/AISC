@@ -123,17 +123,16 @@ def _merge_periodictable_data(features_and_scale, atomic_dataset_dict, periodic_
     return periodic_table
 
 
-def build_supercon(path, material=True, name='supercon_.csv'):
+def build_supercon(path, index_col=0):
     """Create a dataset of superconductors and non-superconductors from a csv file with chemical formulas,
-    under column name 'formula', and critical temperature (as a float). Non-superconductors' critical temperature
-     must be set to 0.
+    under column name 'formula', and critical temperature (as a float)
 
     Args:
         path (str): path to read raw material formulas
-        material (bool): a flag used to indicate if keep or not the material column
-        name (str): the name of the saved file (default is supercon_tot.csv)
+        index_col: if index is present put 0, otherwise None
     """
-    data = pd.read_csv(path)
+    data = pd.read_csv(path, index_col=index_col)
+    data = data.dropna()
     supercon = build_dataframe(data)
     # We use material as label for chemical formulas
     supercon = supercon.rename(columns={'formula': 'material'})
@@ -144,8 +143,9 @@ def build_supercon(path, material=True, name='supercon_.csv'):
     # We swap the last 2 columns because we want 'material' as last one
     chemical_symbols = supercon.columns[:96]
     chemical_symbols = list(chemical_symbols)
-    chemical_symbols.append('critical_temp')
     chemical_symbols.append('material')
+    if "critical_temp" in data.columns:
+        chemical_symbols.append('critical_temp')
     supercon = supercon[chemical_symbols]
 
     return supercon
