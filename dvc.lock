@@ -78,7 +78,8 @@ stages:
       md5: 83a15d19880584ab0c62dddfa3ce6de2
       size: 68
   evaluate:
-    cmd: python project_aisc/src/laboratory/evaluate.py  -problem regression
+    cmd: python project_aisc/src/laboratory/evaluate.py  -problem regression --no-save
+      all
     deps:
     - path: active_experiments.json
       md5: 83a15d19880584ab0c62dddfa3ce6de2

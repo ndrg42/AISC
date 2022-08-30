@@ -15,6 +15,7 @@ WORKDIR /AISC
 COPY requirements.txt ./
 RUN "${CONDA_DIR}/envs/${conda_env}/bin/pip" install --quiet --no-cache-dir -r requirements.txt && \
     mamba install -c conda-forge dvc && \
+    mamba install -c conda-forge dvc-gdrive && \
     echo "conda activate ${conda_env}" >> "${HOME}/.bashrc" && \
     echo "pip install -e ." >>  "${HOME}/.bashrc"
 
