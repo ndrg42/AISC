@@ -1,0 +1,4 @@
+outs:
+- md5: 13cbac32a07e16bb3aaf19a36a719354
+  size: 19876446
+  path: garbagein.csv

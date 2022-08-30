@@ -1,0 +1,4 @@
+outs:
+- md5: 6c886e53fcffd7e6f7cfa2efc7df4e5e
+  size: 949
+  path: electron_affinity.csv

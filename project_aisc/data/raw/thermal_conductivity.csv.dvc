@@ -1,0 +1,4 @@
+outs:
+- md5: 0e2bcf2e80bb82472edbffb0b0d1932d
+  size: 686
+  path: thermal_conductivity.csv

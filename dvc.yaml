@@ -38,4 +38,4 @@ stages:
       - project_aisc/data/processed/hosono.npy
       - project_aisc/data/processed/Y_hosono.npy
       - project_aisc/data/processed/ima.npy
-    cmd: python project_aisc/src/laboratory/evaluate.py  -problem ${problem}
+    cmd: python project_aisc/src/laboratory/evaluate.py  -problem ${problem} --no-save all
